@@ -1210,9 +1210,10 @@
 
   // ─── Export modal ────────────────────────────────────────────
   const scrim=$('modalScrim');
-  const EXPORT_TABS=['Board','CSS','SCSS','JSON','Tailwind','SVG','Array'];
+  const EXPORT_TABS=['Board','Wheel','CSS','SCSS','JSON','Tailwind','SVG','Array'];
   const EXPORT_META={
     Board:['Brand Board','A named palette board — download as PNG or SVG.'],
+    Wheel:['Color Wheel','The wheel with your palette handles — download as PNG or SVG.'],
     CSS:['CSS Variables','Drop these custom properties into your stylesheet.'],
     SCSS:['SCSS Variables','Sass variables for your palette.'],
     JSON:['JSON','Structured palette data with names and variants.'],
@@ -1265,7 +1266,38 @@
         cols.map((c,i)=>`  <rect x="${i*w}" y="0" width="${w}" height="140" fill="${c.hex.toLowerCase()}"/>`).join('\n')+'\n</svg>';
     }
     if(tab==='Board') return buildBoardSvg();
+    if(tab==='Wheel') return buildWheelSvg();
     return '';
+  }
+
+  // ─── Color wheel (exportable SVG) ────────────────────────────
+  // Vector HSV disc (hue wedges + radial saturation overlay) + the current
+  // hue's shade ring + the palette handles at their positions. Wedges overlap
+  // slightly to avoid AA seams; PNG export rasterizes this same SVG.
+  function buildWheelSvg(){
+    const SIZE=560, cx=SIZE/2, cy=SIZE/2;
+    const ringOuter=SIZE/2-6, ringInner=ringOuter-26, R=ringInner-6;
+    const pt=(a,r)=>[cx+r*Math.sin(a), cy-r*Math.cos(a)];
+    const f2=n=>n.toFixed(2);
+    function wedge(a0,a1,r0,r1){
+      const [x0,y0]=pt(a0,r1),[x1,y1]=pt(a1,r1);
+      if(r0<=0) return `M ${f2(cx)} ${f2(cy)} L ${f2(x0)} ${f2(y0)} A ${r1} ${r1} 0 0 1 ${f2(x1)} ${f2(y1)} Z`;
+      const [x2,y2]=pt(a1,r0),[x3,y3]=pt(a0,r0);
+      return `M ${f2(x0)} ${f2(y0)} A ${r1} ${r1} 0 0 1 ${f2(x1)} ${f2(y1)} L ${f2(x2)} ${f2(y2)} A ${r0} ${r0} 0 0 0 ${f2(x3)} ${f2(y3)} Z`;
+    }
+    let s=`<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">`;
+    s+=`<defs><radialGradient id="wsat" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#fff" stop-opacity="1"/><stop offset="70%" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>`;
+    const N=360, step=2*Math.PI/N, ov=step*0.75;
+    let disc='';
+    for(let k=0;k<N;k++){ const a0=k*step-ov, a1=(k+1)*step+ov; const [r,g,b]=hslToRgb((k+0.5)/N*360,1,0.5); disc+=`<path d="${wedge(a0,a1,0,R)}" fill="${rgbToHex(r,g,b)}"/>`; }
+    s+=`<g>${disc}</g><circle cx="${cx}" cy="${cy}" r="${R}" fill="url(#wsat)"/>`;
+    const RN=144, rs=2*Math.PI/RN, rov=rs*0.75;
+    let ring='';
+    for(let k=0;k<RN;k++){ const fr=(k+0.5)/RN, light=0.15+0.7*Math.abs(fr*2-1); const [r,g,b]=hslToRgb(state.h,state.s,light); const a0=k*rs-rov,a1=(k+1)*rs+rov; ring+=`<path d="${wedge(a0,a1,ringInner,ringOuter)}" fill="${rgbToHex(r,g,b)}"/>`; }
+    s+=`<g>${ring}</g>`;
+    schemeColors().forEach((c,i)=>{ const a=mod360(state.h+c.off)*Math.PI/180; const [x,y]=pt(a, state.s*R); const hr=i===0?16:13; s+=`<circle cx="${f2(x)}" cy="${f2(y)}" r="${hr}" fill="${c.hex}" stroke="#fff" stroke-width="3.5"/>`; });
+    s+='</svg>';
+    return s;
   }
 
   // ─── Brand board (mosaic) ────────────────────────────────────
@@ -1332,12 +1364,14 @@
     });
     $('exportTitle').textContent=EXPORT_META[activeTab][0];
     $('exportSub').textContent=EXPORT_META[activeTab][1];
-    const isBoard=activeTab==='Board', isTw=activeTab==='Tailwind';
-    $('exportCode').classList.toggle('hidden', isBoard||isTw);
-    $('boardPreview').classList.toggle('hidden', !isBoard);
+    const isBoard=activeTab==='Board', isTw=activeTab==='Tailwind', isWheel=activeTab==='Wheel';
+    const isImg=isBoard||isWheel;
+    $('exportCode').classList.toggle('hidden', isImg||isTw);
+    $('boardPreview').classList.toggle('hidden', !isImg);
     $('scalesPreview').classList.toggle('hidden', !isTw);
-    $('downloadPng').classList.toggle('hidden', !isBoard);
+    $('downloadPng').classList.toggle('hidden', !isImg);
     if(isBoard) $('boardPreview').innerHTML=buildBoardSvg();
+    else if(isWheel) $('boardPreview').innerHTML='<div style="display:flex;justify-content:center;padding:6px 0"><div style="width:min(360px,100%)">'+buildWheelSvg()+'</div></div>';
     else if(isTw) $('scalesPreview').innerHTML=buildScalesPreviewHtml();
     else $('exportCode').textContent=exportContent(activeTab);
   }
@@ -1349,12 +1383,13 @@
   scrim.onclick=e=>{ if(e.target===scrim) scrim.classList.add('hidden'); };
   $('copyExport').onclick=()=>copy(exportContent(activeTab));
   $('downloadExport').onclick=()=>{
-    const ext={Board:'svg',CSS:'css',SCSS:'scss',JSON:'json',Tailwind:'js',SVG:'svg',Array:'js'}[activeTab];
+    const ext={Board:'svg',Wheel:'svg',CSS:'css',SCSS:'scss',JSON:'json',Tailwind:'js',SVG:'svg',Array:'js'}[activeTab];
     const blob=new Blob([exportContent(activeTab)],{type:'text/plain'});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=(activeTab==='Board'?'brand-board':'palette')+'.'+ext; a.click(); URL.revokeObjectURL(a.href);
+    const nm=activeTab==='Board'?'brand-board':activeTab==='Wheel'?'color-wheel':'palette';
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=nm+'.'+ext; a.click(); URL.revokeObjectURL(a.href);
   };
   $('downloadPng').onclick=()=>{
-    const svg=buildBoardSvg();
+    const svg=activeTab==='Wheel'?buildWheelSvg():buildBoardSvg();
     const img=new Image();
     const blob=new Blob([svg],{type:'image/svg+xml'});
     const url=URL.createObjectURL(blob);
@@ -1363,7 +1398,7 @@
       cv.width=img.width*scale; cv.height=img.height*scale;
       const ctx=cv.getContext('2d'); ctx.scale(scale,scale); ctx.drawImage(img,0,0);
       URL.revokeObjectURL(url);
-      cv.toBlob(b=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='brand-board.png'; a.click(); URL.revokeObjectURL(a.href); });
+      cv.toBlob(b=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=(activeTab==='Wheel'?'color-wheel':'brand-board')+'.png'; a.click(); URL.revokeObjectURL(a.href); });
     };
     img.onerror=()=>{ URL.revokeObjectURL(url); showToast('PNG export failed'); };
     img.src=url;

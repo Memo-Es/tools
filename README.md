@@ -17,6 +17,8 @@ wheel to explore harmonies, generate scales, and export your palette.
   offline hue-based name if the network is unavailable. Every name is editable (click to rename).
   Names come from the picked color (the swatch you see); editable per swatch
 - **Soft / Vivid variants** auto-derived per color (pale tint + saturated punch)
+- **Color-wheel export** — download the wheel itself (HSV disc + shade
+  ring + your palette handles) as **SVG or PNG** (transparent background)
 - **Brand-board export** — a named mosaic board in a brand-sheet layout,
   downloadable as PNG or SVG
 - **Tailwind 50–950 scales** generated locally in **OKLCH**, with lightness
