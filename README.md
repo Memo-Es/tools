@@ -32,7 +32,9 @@ browser.
 ## History
 
 `pixelated-text` was its own repository and moved here with its history.
-The old address, memo-es.github.io/pixelated-text, redirects to this one.
+That repository has been deleted, so its old address,
+memo-es.github.io/pixelated-text, no longer resolves. The playground lives
+at memo-es.github.io/typography-effects/pixelated-text/.
 
 ---
 
