@@ -64,8 +64,23 @@
   background: rgba(255,255,255,0.02);
 }
 .upload input { display: none; }
+/* The search takes the text input's material from ds.css at chip size. */
+.font-search-wrap { margin-top: 10px; }
+.font-search {
+  width: 100%;
+  background: #0a0a0a;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  transition: border-color 140ms ease;
+}
+.font-search:focus { outline: none; border-color: var(--accent); }
+.font-search::placeholder { color: var(--text-dimmer); }
+.chip-sub { margin-left: 6px; color: var(--text-dimmer); font-size: 11px; }
 .hint { margin-top: 10px; font-size: 11px; color: var(--text-dimmer); margin-bottom: 6px; }
-.footer-note a { color: var(--text-dim); }
 
 .modal-scrim[hidden], .modal-pane[hidden] { display: none; }
 .modal { position: relative; }
@@ -111,12 +126,6 @@ pre.code-block { margin: 0; }
       that fades through the palette. Tune every parameter live.
     </p>
     <div id="controls"></div>
-    <div class="footer-note">
-      Three shader passes on the GPU: the slit-scan glyph, a feedback buffer
-      that decays, and a palette ramp over it. Press <strong>Space</strong> to
-      pause. After <a href="https://www.instagram.com/oyeabhijit/" target="_blank" rel="noopener noreferrer">oyeabhijit</a>'s
-      [a] — Typeface.
-    </div>
   </aside>
 </div>
 
@@ -496,16 +505,53 @@ function rasterise(w, h, s) {
   return c;
 }
 
-async function loadGoogleFont(family) {
+/*
+ * The Google Fonts catalogue, from Fontsource's public API: every family,
+ * its weights and whether it has italics, with CORS and no key. Google's own
+ * Developer API needs a key, and its metadata endpoint sends no CORS header.
+ * Fetched once, the first time the search is focused.
+ */
+let catalogue = null;
+function loadCatalogue() {
+  if (!catalogue) {
+    catalogue = fetch('https://api.fontsource.org/v1/fonts')
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then((list) => list
+        .filter((f) => f.type === 'google')
+        .map((f) => ({ family: f.family, weights: f.weights || [400], italic: (f.styles || []).includes('italic'), category: f.category || '' }))
+        .sort((a, b) => a.family.localeCompare(b.family)))
+      .catch((err) => { catalogue = null; throw err; });
+  }
+  return catalogue;
+}
+
+/*
+ * Ask Google for the weights the family actually has. The css2 endpoint
+ * answers 400 for the WHOLE request if any weight in it does not exist, so
+ * a fixed 300..800 range silently failed for every single-weight display
+ * face — Archivo Black among the presets.
+ */
+async function loadGoogleFont(family, meta) {
   const id = 'gf-' + family.replace(/\s+/g, '-');
   if (!document.getElementById(id)) {
+    if (!meta) {
+      try { meta = (await loadCatalogue()).find((f) => f.family === family); } catch {}
+    }
+    const weights = meta ? meta.weights : [];
+    let axis = '';
+    if (weights.length && meta.italic) {
+      axis = ':ital,wght@' + [0, 1].flatMap((i) => weights.map((w) => `${i},${w}`)).join(';');
+    } else if (weights.length) {
+      axis = ':wght@' + weights.join(';');
+    }
     const link = document.createElement('link');
     link.id = id;
     link.rel = 'stylesheet';
-    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@300;400;500;600;700;800&display=swap`;
+    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family).replace(/%20/g, '+')}${axis}&display=swap`;
     document.head.appendChild(link);
   }
-  try { await document.fonts.load(`500 120px "${family}"`); } catch {}
+  const w = meta && meta.weights.includes(S.weight) ? S.weight : 400;
+  try { await document.fonts.load(`${w} 120px "${family}"`); } catch {}
 }
 async function loadUploadedFont(file) {
   const base = file.name.replace(/\.[^.]+$/, '').replace(/[^\w\s-]/g, '').trim() || 'Custom Font';
@@ -658,22 +704,73 @@ function fontsSection() {
         fontNote.textContent = `${extraFonts.length} loaded`;
       },
     }));
-  const google = h('div', { class: 'select-row' }, GOOGLE_FONT_PRESETS.map((gf) =>
-    h('button', {
-      class: 'select-chip',
-      style: `font-family: "${gf}", sans-serif; font-size: 11px`,
-      onclick: async () => {
-        fontNote.textContent = 'loading…';
-        await loadGoogleFont(gf);
-        const value = `"${gf}", sans-serif`;
-        if (!extraFonts.find((f) => f.value === value)) extraFonts.push({ value, label: gf });
-        fontNote.textContent = `${extraFonts.length} loaded`;
-        set('font', value, { source: true });
-      },
-    }, `+ ${gf}`)));
+  const pick = async (family, meta) => {
+    fontNote.textContent = `loading ${family}…`;
+    await loadGoogleFont(family, meta);
+    const value = `"${family}", sans-serif`;
+    if (!extraFonts.find((f) => f.value === value)) {
+      extraFonts.push({ value, label: family.length > 14 ? family.slice(0, 12) + '…' : family });
+    }
+    fontNote.textContent = `${extraFonts.length} loaded`;
+    set('font', value, { source: true });
+  };
+  const chip = (family, meta, sub) => h('button', {
+    class: 'select-chip',
+    title: family,
+    onclick: () => pick(family, meta),
+  }, `+ ${family}`, sub ? h('span', { class: 'chip-sub' }, sub) : null);
+
+  // Empty query: the presets. Typing: the catalogue, prefix matches first.
+  const results = h('div', { class: 'select-row' });
+  const status = h('div', { class: 'hint' });
+  const showPresets = () => {
+    status.textContent = 'Or add a Google font';
+    results.replaceChildren(...GOOGLE_FONT_PRESETS.map((gf) => chip(gf)));
+  };
+  let seq = 0;
+  const search = async (q) => {
+    const n = ++seq;
+    q = q.trim().toLowerCase();
+    if (!q) return showPresets();
+    status.textContent = 'Searching…';
+    let list;
+    try { list = await loadCatalogue(); }
+    catch { if (n === seq) status.textContent = "Couldn't reach the font list. Try again, or use a preset."; return; }
+    if (n !== seq) return;
+    const starts = [], contains = [];
+    for (const f of list) {
+      const name = f.family.toLowerCase();
+      if (name.startsWith(q)) starts.push(f);
+      else if (name.includes(q)) contains.push(f);
+    }
+    const hits = [...starts, ...contains];
+    status.textContent = hits.length
+      ? `${hits.length} ${hits.length === 1 ? 'family' : 'families'}${hits.length > 12 ? ' · showing 12' : ''}`
+      : 'No Google font by that name';
+    results.replaceChildren(...hits.slice(0, 12).map((f) => chip(f.family, f, f.category.replace('-', ' '))));
+  };
+  const input = h('input', {
+    class: 'font-search',
+    type: 'search',
+    placeholder: 'Search Google Fonts…',
+    'aria-label': 'Search Google Fonts',
+    autocomplete: 'off',
+    spellcheck: 'false',
+  });
+  let timer = 0;
+  input.addEventListener('focus', () => { loadCatalogue().catch(() => {}); }, { once: true });
+  input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => search(input.value), 120); });
+  // Enter takes the top match, which is what a search box promises.
+  input.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const first = results.querySelector('.select-chip');
+    if (first && input.value.trim()) first.click();
+  });
+  showPresets();
   return h('div', { class: 'field' },
     h('div', { class: 'field-row' }, h('div', { class: 'field-name' }, 'Custom font'), fontNote),
-    upload, h('div', { class: 'hint' }, 'Or add a Google font'), google);
+    upload, h('div', { class: 'font-search-wrap' }, input), status, results);
 }
 
 function paletteChips() {
@@ -922,15 +1019,20 @@ window.addEventListener('keydown', (e) => { if (e.key === 'Escape') scrim.hidden
 (async () => {
   try {
     await Promise.all([document.fonts.load('500 200px "Inter"'), document.fonts.ready]);
-    const fam = S.font.match(/^"([^"]+)"/);
-    if (fam && !['Inter'].includes(fam[1]) && GOOGLE_FONT_PRESETS.includes(fam[1])) {
-      await loadGoogleFont(fam[1]);
-      extraFonts.push({ value: S.font, label: fam[1] });
-    }
   } catch {}
   refreshers.forEach((r) => r());
   sourceDirty = true;
   requestAnimationFrame(tick);
+  // A link can name any Google family now the search exists, not only a
+  // preset. Fetch it after the first frame rather than before: the page
+  // opens at once in Inter and the glyph swaps when the face lands.
+  const fam = S.font.match(/^"([^"]+)"/);
+  if (fam && fam[1] !== 'Inter') {
+    await loadGoogleFont(fam[1]);
+    extraFonts.push({ value: S.font, label: fam[1].length > 14 ? fam[1].slice(0, 12) + '…' : fam[1] });
+    refreshers.forEach((r) => r());
+    sourceDirty = true;
+  }
 })();
 </script>
 </body>
