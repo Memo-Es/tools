@@ -19,7 +19,8 @@ experiment with live controls for every parameter and export support.
 
 ## Usage
 
-Open `index.html` in any modern browser. There's no build step. Press
+Open the live playground at https://memo-es.github.io/type-effects/kinematic/,
+or open `index.html` in any modern browser. There's no build step. Press
 **Space** to pause and pick the moment for a still.
 
 ## How it works
@@ -39,9 +40,9 @@ glyph is now is the core colour, and the further back it was, the cooler.
 
 ## Design system
 
-The same tokens, panel, controls and export modal as
-[pixelated-text](https://github.com/Memo-Es/pixelated-text), so the two read
-as one set of tools.
+The shared `../ds.css`, the same one [pixelated-text](../pixelated-text/)
+uses, so the playgrounds read as one set of tools. Only this page's own rules
+are inline.
 
 ---
 
