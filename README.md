@@ -1,14 +1,14 @@
-# Type Effects
+# Typography Effects
 
 Browser playgrounds for typographic motion. Type anything, tune every
 parameter live, and export a still, a video or the settings.
 
-Live at https://memo-es.github.io/type-effects/
+Live at https://memo-es.github.io/typography-effects/
 
 | Effect | | |
 | --- | --- | --- |
-| [Pixelated text](pixelated-text/) | Text that materialises through a shrinking block grid | [open](https://memo-es.github.io/type-effects/pixelated-text/) |
-| [Kinematic type](kinematic/) | A glyph swinging on its axis in stepped bands, with a heat trail | [open](https://memo-es.github.io/type-effects/kinematic/) |
+| [Pixelated text](pixelated-text/) | Text that materialises through a shrinking block grid | [open](https://memo-es.github.io/typography-effects/pixelated-text/) |
+| [Kinematic type](kinematic/) | A glyph swinging on its axis in stepped bands, with a heat trail | [open](https://memo-es.github.io/typography-effects/kinematic/) |
 
 ## Structure
 
