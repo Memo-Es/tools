@@ -42,9 +42,20 @@ Then put `mt-root` on the element that holds the tool and use the classes:
 ## What's in it
 
 - `dist/tokens.css` has the colours, spacing, the shadow and the font stacks as variables, all starting with `--mt-` so they don't clash with a project's own (`--mt-bg`, `--mt-text`, `--mt-dim`, `--mt-hi`, `--mt-paper`, `--mt-ink`, `--mt-space-16`, `--mt-font-mono`). It also has a class for each text style, like `.mt-t-body` or `.mt-t-gr-num`.
-- `dist/components.css` has the pieces of the invoices editor as classes: the top bar (`mt-bar`), bracket buttons (`mt-btn`, with `is-on`, `mt-btn--primary` and `mt-btn--add`), switches, section heads, fields, chip rows, item rows, the fold, the status line and the A4 sheet (`mt-sheet`).
+- `dist/components.css` has the pieces of the invoices editor as classes, plus the playground layer described below: the top bar (`mt-bar`), bracket buttons (`mt-btn`, with `is-on`, `mt-btn--primary` and `mt-btn--add`), switches, section heads, fields, chip rows, item rows, the fold, the status line and the A4 sheet (`mt-sheet`).
 - `dist/fonts.css` loads the five font families from Google Fonts.
 - `dist/index.css` imports the other three.
+
+## Playgrounds
+
+The tools in this repo were all built on the same control panel classes, which came from pixelated-text. `components.css` has a playground layer that restyles those classes in Memo Terminal, so a playground only needs two lines to wear it:
+
+```html
+<html class="mt-play">
+<link rel="stylesheet" href="../design-system/dist/index.css">  <!-- last in <head> -->
+```
+
+It points the tools' own variables (`--bg`, `--panel`, `--text`, `--text-dim`, `--accent`) at the system's colours, turns chips, segments and tabs into bracket buttons, section labels into `~ $` heads, field names into dim labels, sliders into a hairline with a square handle, and squares every corner. Canvases, SVG and WebGL are left alone.
 
 ## How it works
 

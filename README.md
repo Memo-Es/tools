@@ -8,7 +8,10 @@ My tools and playgrounds, in one repo and on one site at [tools.memoesparza.com]
 | Color wheel | [`color-wheel/`](color-wheel/) | [/color-wheel/](https://tools.memoesparza.com/color-wheel/) |
 | Point cloud, and its editions | [`point-cloud/`](point-cloud/) | [/point-cloud/](https://tools.memoesparza.com/point-cloud/) |
 | Pixelated text and kinematic type | [`typography/`](typography/) | [/typography/](https://tools.memoesparza.com/typography/) |
-| Memo Terminal, the design system | [`design-system/`](design-system/) | [/design-system/index.css](https://tools.memoesparza.com/design-system/index.css) |
+| Liquid glass | [`liquid-glass/`](liquid-glass/) | [/liquid-glass/](https://tools.memoesparza.com/liquid-glass/) |
+| Line scale | [`animated-scale/`](animated-scale/) | [/animated-scale/](https://tools.memoesparza.com/animated-scale/) |
+| Animated orb | [`animated-orb/`](animated-orb/) | [/animated-orb/](https://tools.memoesparza.com/animated-orb/) |
+| Memo Terminal, the design system | [`design-system/`](design-system/) | [/design-system/dist/index.css](https://tools.memoesparza.com/design-system/dist/index.css) |
 
 ## Why
 
@@ -26,13 +29,15 @@ That builds the whole site into `dist/` the way it is deployed. To work on one t
 
 ## How it works
 
-- `scripts/build.mjs` builds invoices with Vite, copies the other tools as they are, puts the design system's stylesheet at `/design-system/`, and adds the list of tools from `hub/` as the home page.
+- `scripts/build.mjs` builds invoices with Vite, copies the other tools as they are, puts the design system's stylesheet at `/design-system/dist/`, and adds the list of tools from `hub/` as the home page.
+- Every playground links `design-system/dist/index.css` last in its `<head>` and has `class="mt-play"` on `<html>`. That switches on the playground layer in the design system, which restyles the control panel all the playgrounds share (`.panel`, `.section`, `.field`, `.select-chip`, `.btn` and the rest) without touching their markup or their artwork.
 - npm workspaces link `design-system/` into invoices, so invoices always uses the design system in this repo rather than a published copy.
 - `vercel.json` tells Vercel to run that build and serve `dist/`, with trailing slashes on so each tool's relative paths resolve.
-- Color wheel, point cloud and typography came in with their full history, and their old repos point here. Invoices came in as a single snapshot, because its earlier history has my own details in the sample data.
+- Color wheel, point cloud, typography, liquid glass, line scale and animated orb came in with their full history. Invoices came in as a single snapshot, because its earlier history has my own details in the sample data.
 
 ## Limits
 
-- Only invoices uses the design system so far. The other tools still have their own look and get moved over one at a time.
+- travel-planner and rfc-api are not in here. The planner is a Next.js app with a database and sign in, which needs its own deploy, and rfc-api is an API with no interface.
+- The text boxes where you type the words a tool animates keep the tool's own typeface and size, since they preview the type.
 - Point cloud loads three.js from jsDelivr and pixelated text loads React and Babel from unpkg, so those two need those CDNs to be reachable.
 - `typography/pixelated-text/project/fonts/` has PP Editorial New font files that were already in the public typography repo. Check that their licence allows that before relying on it.

@@ -2,11 +2,12 @@
 // tools.memoesparza.com serves them:
 //
 //   dist/index.html        the list of tools (hub/)
-//   dist/design-system/    the shared stylesheet, so any tool can link it
+//   dist/design-system/dist/  the shared stylesheet, at the same relative path as in the repo
 //   dist/invoices/         Vite build
 //   dist/color-wheel/      copied as is
 //   dist/point-cloud/      copied as is, editions/ included
 //   dist/typography/       copied as is, every effect included
+//   dist/liquid-glass/, dist/animated-scale/, dist/animated-orb/   copied as is
 import { execSync } from 'node:child_process'
 import { cpSync, rmSync, mkdirSync } from 'node:fs'
 
@@ -21,9 +22,9 @@ run('npm run check -w tools-design-system')
 run('npm run build -w invoices')
 
 cpSync('hub', 'dist', { recursive: true })
-cpSync('design-system/dist', 'dist/design-system', { recursive: true })
+cpSync('design-system/dist', 'dist/design-system/dist', { recursive: true })
 cpSync('invoices/dist', 'dist/invoices', { recursive: true })
-for (const tool of ['color-wheel', 'point-cloud', 'typography']) {
+for (const tool of ['color-wheel', 'point-cloud', 'typography', 'liquid-glass', 'animated-scale', 'animated-orb']) {
   cpSync(tool, `dist/${tool}`, { recursive: true, filter: skip })
 }
 console.log('Built dist/')

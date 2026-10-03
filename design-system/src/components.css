@@ -92,3 +92,262 @@ input[type='date'].mt-input { color-scheme: dark; }
   .mt-dots { display: none; }
   .mt-status { padding: var(--space-12) var(--space-16); }
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Playground: the tools' shared control panel, in Memo Terminal.
+
+   Every playground (point cloud, typography, color wheel, liquid glass, line
+   scale, orb) was built on the same set of classes, inherited from
+   pixelated-text: .panel, .section, .field, .select-chip, .seg-btn, .btn,
+   .modal and the rest. This layer restyles those classes rather than asking
+   each tool to rewrite its markup. Put class="mt-play" on <html> and link this
+   file after the tool's own CSS. The artwork itself (canvas, SVG, WebGL) is
+   left alone.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* The tools' own variable names, pointed at the system's colours. */
+.mt-play {
+  --bg: var(--bg);
+  --panel: var(--panel);
+  --panel-2: var(--panel);
+  --panel-border: var(--line);
+  --text: var(--text);
+  --text-dim: var(--dim);
+  --text-dimmer: var(--dim);
+  --accent: var(--hi);
+  --accent-hover: var(--primary-hover);
+  --radius: 0;
+  --r: 0;
+}
+.mt-play body {
+  background: var(--bg);
+  color: var(--text);
+  font: 12px/1.6 var(--font-mono);
+  -webkit-font-smoothing: antialiased;
+}
+.mt-play :where(button, input, select, textarea) { font-family: var(--font-mono); }
+
+/* Stage: the artwork side */
+.mt-play .stage { background: var(--bg); }
+.mt-play .stage-title,
+.mt-play .modal-title {
+  font: 500 12px/1.6 var(--font-mono);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--hi);
+}
+.mt-play .stage-title::before { content: '> '; color: var(--dim); }
+.mt-play .stage-meta { font: 12px/1.6 var(--font-mono); letter-spacing: 0; color: var(--dim); font-variant-numeric: tabular-nums; }
+.mt-play .stage-meta strong { color: var(--hi); font-weight: 400; }
+.mt-play .canvas-frame,
+.mt-play .preview-frame { border: 1px solid var(--line); border-radius: 0; background: var(--bg); }
+
+/* Panel: the controls side */
+.mt-play .panel { background: var(--panel); border-left: 1px solid var(--line); border-radius: 0; }
+.mt-play .panel-brand-dot { display: none; }
+.mt-play .panel-brand-name { font-size: 11px; letter-spacing: 0; color: var(--dim); font-weight: 400; }
+.mt-play .panel-brand-name::before { content: '> '; }
+.mt-play .panel-title {
+  font: 500 12px/1.6 var(--font-mono);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--hi);
+}
+.mt-play .panel-sub,
+.mt-play .modal-sub { font-size: 12px; line-height: 1.6; color: var(--text); }
+
+.mt-play .section { border-bottom: 1px dashed var(--line); }
+.mt-play .section-label {
+  font: 500 12px/1.6 var(--font-mono);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--hi);
+}
+.mt-play .section-label::before { content: '~ $ '; }
+
+.mt-play .field-name,
+.mt-play .mini-field-name,
+.mt-play .export-label,
+.mt-play .export-field-label {
+  font: 11px/1.6 var(--font-mono);
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.mt-play .field-name::after,
+.mt-play .mini-field-name::after { content: ':'; }
+.mt-play .field-value,
+.mt-play .mini-field-value { font: 12px/1.6 var(--font-mono); color: var(--hi); font-variant-numeric: tabular-nums; }
+.mt-play .field-note,
+.mt-play .hint,
+.mt-play .footer-note { font-size: 11px; color: var(--dim); }
+
+/* Text, number and select inputs: a value on an underline, a box when it is several lines */
+.mt-play :where(input[type='text'], input[type='number'], input:not([type]), select, .select-native, .number-input, .hex-input) {
+  background: transparent;
+  color: var(--hi);
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
+  border-radius: 0;
+  font: 12px/1.6 var(--font-mono);
+  padding: 4px 0;
+  outline: none;
+}
+.mt-play :where(textarea, textarea.text-input) {
+  background: transparent;
+  color: var(--hi);
+  border: 1px solid var(--line-strong);
+  border-radius: 0;
+  font: 12px/1.6 var(--font-mono);
+  letter-spacing: 0;
+  padding: 6px 8px;
+}
+.mt-play :where(input, select, textarea):focus { border-color: var(--text); outline: none; }
+.mt-play :where(input, textarea)::placeholder { color: var(--placeholder); }
+.mt-play select option { background: var(--panel); }
+
+/* Slider: a hairline with a square handle */
+.mt-play input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 12px;
+  background: linear-gradient(var(--line-strong), var(--line-strong)) center / 100% 1px no-repeat;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+}
+.mt-play input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 8px; height: 12px;
+  background: var(--hi);
+  border: 0; border-radius: 0; box-shadow: none;
+  cursor: pointer;
+}
+.mt-play input[type='range']::-webkit-slider-thumb:hover { transform: none; background: var(--primary-hover); }
+.mt-play input[type='range']::-moz-range-thumb {
+  width: 8px; height: 12px;
+  background: var(--hi);
+  border: 0; border-radius: 0; box-shadow: none;
+  cursor: pointer;
+}
+.mt-play input[type='range']:focus-visible { outline: 1px solid var(--text); outline-offset: 2px; }
+
+/* Chips, segments and tabs become bracket buttons */
+.mt-play :where(.select-chip, .seg-btn, .modal-tab, .mini-chip, .scale-opt, .variant-chip, .detail-tab, .scheme-opt) {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 2px 4px;
+  color: var(--dim);
+  font: 12px/1.6 var(--font-mono);
+  letter-spacing: 0;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.mt-play :where(.select-chip, .seg-btn, .modal-tab, .mini-chip, .scale-opt, .variant-chip, .detail-tab)::before { content: '['; }
+.mt-play :where(.select-chip, .seg-btn, .modal-tab, .mini-chip, .scale-opt, .variant-chip, .detail-tab)::after { content: ']'; }
+.mt-play :where(.select-chip, .seg-btn, .modal-tab, .mini-chip, .scale-opt, .variant-chip, .detail-tab, .scheme-opt):hover,
+.mt-play :where(.select-chip, .seg-btn, .modal-tab, .mini-chip, .scale-opt, .variant-chip, .detail-tab, .scheme-opt):is(.active, .on, [aria-pressed='true'], [aria-selected='true']) {
+  background: none;
+  border-color: transparent;
+  color: var(--hi);
+}
+.mt-play :where(.select-row, .mini-chips) { gap: 2px 4px; }
+.mt-play .seg { background: none; border: 0; border-radius: 0; padding: 0; gap: 2px; }
+
+/* Buttons: bracket buttons, and one inverted primary */
+.mt-play :where(.btn, .secondary-btn, .add-btn, .rm-btn, .remove-btn, .icon-btn, .extra-btn, .detail-btn) {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 2px 4px;
+  color: var(--dim);
+  font: 12px/1.6 var(--font-mono);
+  letter-spacing: 0;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.mt-play :where(.btn, .secondary-btn, .add-btn)::before { content: '['; }
+.mt-play :where(.btn, .secondary-btn, .add-btn)::after { content: ']'; }
+.mt-play :where(.btn, .secondary-btn, .add-btn, .rm-btn, .remove-btn, .icon-btn, .extra-btn, .detail-btn):hover { background: none; color: var(--hi); }
+.mt-play .btn .dot { display: none; }
+.mt-play :where(.btn.primary, .export-btn, .big-btn) {
+  background: var(--hi);
+  color: var(--bg);
+  border: 0;
+  border-radius: 0;
+  padding: 2px 8px;
+  font: 12px/1.6 var(--font-mono);
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.mt-play :where(.btn.primary, .export-btn, .big-btn):hover { background: var(--primary-hover); color: var(--bg); }
+.mt-play .big-btn { padding: 8px; }
+.mt-play .big-btn:disabled { background: var(--line-strong); color: var(--dim); }
+.mt-play .btn.primary::before,
+.mt-play .btn.primary::after { content: none; }
+.mt-play :where(button, [role='button'], a):focus-visible { outline: 1px solid var(--text); outline-offset: 1px; }
+
+/* Toggle: a square switch */
+.mt-play .toggle { border-radius: 0; background: var(--line); border: 1px solid var(--line-strong); }
+.mt-play .toggle::after { border-radius: 0; background: var(--dim); }
+.mt-play .toggle.on { background: var(--hi); }
+.mt-play .toggle.on::after { background: var(--bg); }
+
+/* Colour wells stay colour, with square corners */
+.mt-play :where(.color-swatch, .swatch, input[type='color']) { border-radius: 0; border: 1px solid var(--line-strong); box-shadow: none; }
+.mt-play :where(.color-swatch, .swatch):hover { transform: none; border-color: var(--text); }
+.mt-play .color-swatch.active { border-color: var(--hi); box-shadow: none; }
+.mt-play input[type='color']::-webkit-color-swatch { border-radius: 0; }
+
+/* Progress */
+.mt-play .progress-rail { height: 1px; background: var(--line-strong); border-radius: 0; }
+.mt-play .progress-fill { background: var(--hi); }
+.mt-play .recording-pulse { border-radius: 0; }
+
+/* Modal */
+.mt-play :where(.modal-scrim, .modal-overlay) { background: rgba(0, 0, 0, 0.8); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.mt-play .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 0; box-shadow: none; }
+.mt-play .modal-tabs { background: var(--bg); border-right: 1px solid var(--line); }
+.mt-play .modal-tab { text-align: left; }
+.mt-play .modal-close { border-radius: 0; color: var(--dim); }
+.mt-play .modal-close:hover { background: none; color: var(--hi); }
+.mt-play .export-row { border-bottom: 1px dashed var(--line); }
+.mt-play .code-block { background: var(--bg); border: 1px solid var(--line); border-radius: 0; font: 12px/1.6 var(--font-mono); color: var(--text); }
+
+/* Labels some tools name differently */
+.mt-play .field-label { font: 11px/1.6 var(--font-mono); text-transform: uppercase; color: var(--dim); }
+.mt-play .field-label::after { content: ':'; }
+
+/* Boxes the tools draw around lists, uploads and tiles: square, on the structural line */
+.mt-play :where(.upload, .font-search, .color-list, .color-entry, .attractor-list, .attractor-card, .dims-display, .palette-chip, .palette-ramp, .frame) {
+  border-radius: 0;
+  border-color: var(--line-strong);
+}
+.mt-play .attractor-card-title .idx-box { border-radius: 0; }
+.mt-play .effect .frame { border: 1px solid var(--line); }
+.mt-play .effect .name { font: 500 12px/1.6 var(--font-mono); color: var(--hi); text-transform: uppercase; }
+.mt-play .effect .go { font: 12px/1.6 var(--font-mono); color: var(--dim); text-transform: uppercase; }
+
+/* Color wheel. Its layout is its own (a top bar of readouts, a wheel card, a
+   column of swatches), so it gets named here. The wheel, its handles and the
+   colour fields stay round; everything that is a control or a container goes
+   square. */
+.mt-play :where(.card, .topbar-right, .icon-btn, .mini-icon, .format-select, .scheme-select, .scheme-menu, .scheme-opt,
+  .palette, .gradient-block, .gradient-bar, .picker-pop, .sv-square, .hue-slider, .scale-pop, .scale-bar, .scale-opt,
+  .board-preview, .tw-cells, .tw-cell, .toast, .detail-btn, .detail-modal, .detail-tabs, .d-ramp, .d-stop, .d-mx,
+  .d-mx-cell, .d-info, .d-csum, .d-tag, .input-row, .swatch-btn) {
+  border-radius: 0;
+}
+.mt-play :where(.card, .palette, .picker-pop, .scale-pop, .scheme-menu, .detail-modal, .board-preview, .input-row, .scheme-select) {
+  background: var(--panel);
+  border-color: var(--line);
+  box-shadow: none;
+}
+.mt-play :where(.swatch-name, .detail-title, .tw-name, .gradient-label, .readout) { font-family: var(--font-mono); }
+.mt-play .gradient-label { font-size: 12px; font-weight: 500; letter-spacing: 0.02em; color: var(--hi); }
+.mt-play .gradient-label::before { content: '~ $ '; }
+.mt-play .scheme-select { font: 12px/1.6 var(--font-mono); text-transform: uppercase; color: var(--hi); }
+.mt-play .topbar { background: var(--panel); border-bottom: 1px solid var(--line); }
+.mt-play .toast { background: var(--hi); color: var(--bg); }
