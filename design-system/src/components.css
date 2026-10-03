@@ -1,0 +1,94 @@
+/* Memo Terminal: the invoices editor's components, as classes.
+   Values are the source's; colours, spacing and type come from tokens.css. */
+
+.mt-root { background: var(--bg); color: var(--text); font: 12px/1.6 var(--font-mono); }
+.mt-root *, .mt-root *::before, .mt-root *::after { box-sizing: border-box; }
+/* Zero specificity, so every component's own colour wins. */
+:where(.mt-root) :where(button, input, select, textarea) { font: inherit; color: inherit; }
+.mt-dim { color: var(--dim); }
+.mt-hi { color: var(--hi); }
+
+/* Top bar: title, dotted leader, switches, actions */
+.mt-bar {
+  display: flex; align-items: center; gap: var(--space-8);
+  padding: var(--space-14) var(--space-24); background: var(--panel);
+  border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+.mt-dots { flex: 1; height: 1px; margin: 0 var(--space-8); border-bottom: 2px dotted var(--rule); }
+
+/* Bracket buttons: the label is the button, [LIKE_THIS] */
+.mt-btn { background: none; border: 0; border-radius: var(--radius-0); padding: var(--space-2) var(--space-4); cursor: pointer; color: var(--dim); }
+.mt-btn:hover, .mt-btn.is-on { color: var(--hi); }
+.mt-btn:focus-visible { outline: 1px solid var(--text); outline-offset: 1px; }
+.mt-btn--primary { color: var(--bg); background: var(--hi); padding: var(--space-2) var(--space-8); }
+.mt-btn--primary:hover { color: var(--bg); background: var(--primary-hover); }
+.mt-btn--add { color: var(--text); }
+.mt-switch { display: flex; gap: var(--space-2); margin-right: var(--space-12); }
+
+/* Section head: a comment rule, a prompt, a comment rule */
+.mt-section { margin-bottom: var(--space-8); }
+.mt-section h2 { font-size: 12px; font-weight: 500; color: var(--hi); margin: var(--space-10) 0; letter-spacing: 0.02em; }
+.mt-section > :nth-child(3) { margin-bottom: var(--space-14); }
+.mt-rule { color: var(--rule); overflow: hidden; white-space: nowrap; }
+.mt-rule::before { content: '/* ' '-------------------------------------------------------------------------------------------'; }
+
+/* Fields: a dim LABEL: over an underlined value */
+.mt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-10) var(--space-16); }
+.mt-field { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.mt-field--wide { grid-column: 1 / -1; }
+.mt-label { color: var(--dim); font-size: 11px; }
+.mt-input {
+  width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--line-strong);
+  padding: var(--space-4) 0; outline: none; border-radius: var(--radius-0); color: var(--hi);
+}
+textarea.mt-input { resize: vertical; border: 1px solid var(--line-strong); padding: 6px var(--space-8); }
+.mt-input:focus { border-color: var(--text); }
+.mt-input::placeholder { color: var(--placeholder); }
+select.mt-input { appearance: none; cursor: pointer; }
+input[type='date'].mt-input { color-scheme: dark; }
+
+/* Chips: a dim LABEL: then bracket buttons */
+.mt-chips { display: flex; align-items: center; gap: var(--space-4); margin-top: var(--space-10); }
+.mt-chips .mt-hint { margin-left: var(--space-8); color: var(--dim); }
+
+/* Item: numbered row in a list */
+.mt-item { padding: var(--space-10) 0 var(--space-12); border-bottom: 1px dashed var(--line); }
+.mt-item-head { display: flex; align-items: center; gap: var(--space-10); }
+.mt-item-head .mt-input { font-weight: 500; }
+.mt-item-detail { margin: var(--space-2) 0 0 var(--space-28); width: calc(100% - var(--space-28)); color: var(--text); font-size: 11px; }
+.mt-item-nums { display: grid; grid-template-columns: 80px 120px 1fr; gap: var(--space-16); align-items: end; margin: 6px 0 0 var(--space-28); }
+.mt-item-amount { text-align: right; color: var(--hi); padding-bottom: var(--space-4); }
+
+/* Disclosure: + closed, - open */
+.mt-details summary { cursor: pointer; color: var(--text); margin-bottom: var(--space-12); list-style: none; }
+.mt-details summary::-webkit-details-marker { display: none; }
+.mt-details summary::before { content: '+ '; color: var(--dim); }
+.mt-details[open] summary::before { content: '- '; }
+
+/* Status line: KEY: [VALUE] pairs, pinned to the bottom of a pane */
+.mt-status {
+  display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-24);
+  padding: var(--space-12) var(--space-32);
+  background: var(--panel); border-top: 1px solid var(--line); color: var(--dim);
+}
+.mt-status .mt-hi { color: var(--hi); }
+
+/* Sheet: A4 paper on a stage */
+.mt-stage { background: var(--stage); padding: var(--space-32); }
+.mt-sheet {
+  width: 210mm; height: 297mm; background: var(--paper); color: var(--ink);
+  box-shadow: var(--shadow-sheet); overflow: hidden; display: flex; flex-direction: column;
+  font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
+}
+.mt-sheet--grotesk { padding: 8mm 10mm 7mm; font-family: var(--font-grotesk); font-size: 9pt; line-height: 1.22; }
+.mt-sheet .mt-2 { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+.mt-sheet .mt-big { font-size: 26pt; line-height: 1; letter-spacing: -0.015em; }
+.mt-sheet .mt-num { font-size: 58pt; line-height: 1; letter-spacing: -0.03em; }
+.mt-sheet .mt-kv > div { display: grid; grid-template-columns: 30mm 1fr; }
+.mt-sheet .mt-paper-dim { color: var(--paper-dim); }
+
+@media (max-width: 900px) {
+  .mt-bar { flex-wrap: wrap; padding: var(--space-12) var(--space-16); }
+  .mt-dots { display: none; }
+  .mt-status { padding: var(--space-12) var(--space-16); }
+}
