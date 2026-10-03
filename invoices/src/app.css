@@ -15,6 +15,9 @@ body { background: var(--bg); color: var(--text); font: 12px/1.6 var(--mono); }
 button, input, select, textarea { font: inherit; color: inherit; }
 .dim { color: var(--dim); }
 .hi { color: var(--hi); }
+/* The way back to the list of tools, in the top bar */
+.crumb { color: var(--dim); text-decoration: none; }
+.crumb:hover, .crumb:focus-visible { color: var(--hi); }
 
 .app { height: 100vh; display: flex; flex-direction: column; }
 

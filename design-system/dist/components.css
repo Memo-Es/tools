@@ -353,3 +353,8 @@ input[type='date'].mt-input { color-scheme: dark; }
 .mt-play .scheme-select { font: 12px/1.6 var(--mt-font-mono); text-transform: uppercase; color: var(--mt-hi); }
 .mt-play .topbar { background: var(--mt-panel); border-bottom: 1px solid var(--mt-line); }
 .mt-play .toast { background: var(--mt-hi); color: var(--mt-bg); }
+
+/* The breadcrumb back to the list of tools, in the panel label: > TOOLS / POINT CLOUD */
+.mt-play .panel-brand-name a { color: var(--mt-text); text-decoration: none; }
+.mt-play .panel-brand-name a:hover,
+.mt-play .panel-brand-name a:focus-visible { color: var(--mt-hi); text-decoration: underline; text-underline-offset: 2px; }

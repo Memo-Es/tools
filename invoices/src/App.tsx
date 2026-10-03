@@ -110,7 +110,8 @@ export function App() {
     <>
       <div className="app">
         <header className="bar">
-          <span className="dim">&gt;</span> INVOICES <span className="dim">({invoice.number})</span>
+          <span className="dim">&gt;</span> <a className="crumb" href="/">TOOLS</a> <span className="dim">/</span> INVOICES{' '}
+          <span className="dim">({invoice.number})</span>
           <span className="dots" />
           <nav className="switch">
             {(['invoice', 'receipt'] as const).map((k) => (
