@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Liquid Glass</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      /* Tokens shared with the other playgrounds (pixelated-text, orb, scale). */
+      :root {
+        --bg: #0a0a0a;
+        --panel: #111111;
+        --panel-border: rgba(255, 255, 255, 0.08);
+        --text: #faf8f5;
+        --text-dim: rgba(250, 248, 245, 0.55);
+        --text-dimmer: rgba(250, 248, 245, 0.35);
+        --accent: #faf8f5;
+        --accent-hover: #ffffff;
+        --terracotta: #c45d35;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        overflow: hidden;
+      }
+
+      /* ── Stage ──────────────────────────────────────────────── */
+      .stage-wrap { position: relative; overflow: hidden; }
+      #bg { position: absolute; inset: 0; background-size: cover; background-position: center; }
+      #stage { position: absolute; inset: 0; }
+      #lensHit { cursor: grab; }
+      #lensHit:active { cursor: grabbing; }
+
+      .stage-meta {
+        position: absolute;
+        left: 28px;
+        bottom: 24px;
+        font-size: 12px;
+        color: var(--text-dimmer);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.02em;
+        pointer-events: none;
+        text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+      }
+
+      /* ── Panel ──────────────────────────────────────────────── */
+      .panel {
+        background: var(--panel);
+        border-left: 1px solid var(--panel-border);
+        padding: 32px 28px 40px 28px;
+        overflow-y: auto;
+        max-height: 100vh;
+      }
+      .panel-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+      .panel-brand-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 2px; }
+      .panel-brand-name {
+        font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+        color: var(--text-dim); font-weight: 500;
+      }
+      .panel-title {
+        font-weight: 300; font-size: 28px; letter-spacing: -0.025em;
+        margin: 0 0 8px 0; color: var(--text);
+      }
+      .panel-sub { font-size: 13px; color: var(--text-dim); line-height: 1.5; margin: 0 0 28px 0; }
+
+      .section {
+        margin-bottom: 28px; padding-bottom: 24px;
+        border-bottom: 1px solid var(--panel-border);
+      }
+      .section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+      .section-label {
+        font-size: 10px; font-weight: 600; letter-spacing: 0.18em;
+        text-transform: uppercase; color: var(--text-dim); margin-bottom: 14px;
+      }
+
+      .field { margin-bottom: 18px; }
+      .field:last-child { margin-bottom: 0; }
+      .field-row {
+        display: flex; justify-content: space-between; align-items: baseline;
+        margin-bottom: 8px;
+      }
+      .field-label { font-size: 13px; color: var(--text); }
+      .field-value {
+        font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      input[type="range"] {
+        -webkit-appearance: none; appearance: none;
+        width: 100%; height: 4px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 2px; outline: none;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none; appearance: none;
+        width: 14px; height: 14px;
+        background: var(--text); border-radius: 50%; cursor: pointer;
+        border: 2px solid var(--panel);
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+        transition: transform 120ms ease;
+      }
+      input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+      input[type="range"]::-moz-range-thumb {
+        width: 14px; height: 14px; background: var(--text);
+        border-radius: 50%; cursor: pointer; border: 2px solid var(--panel);
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+      }
+
+      .select-row { display: flex; gap: 6px; flex-wrap: wrap; }
+      .select-chip {
+        padding: 7px 12px; background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        color: var(--text-dim); font-family: inherit; font-size: 12px;
+        border-radius: 6px; cursor: pointer; white-space: nowrap;
+        transition: all 140ms ease;
+      }
+      .select-chip:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.3); }
+      .select-chip.active {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--accent); color: var(--text);
+      }
+
+      .readout {
+        margin: 0; font-size: 11px; line-height: 1.7; color: var(--text-dimmer);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-variant-numeric: tabular-nums;
+      }
+
+      @media (max-width: 900px) {
+        body { grid-template-columns: 1fr; grid-template-rows: 55vh 1fr; overflow: auto; }
+        .panel { border-left: none; border-top: 1px solid var(--panel-border); max-height: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage-wrap">
+      <div id="bg"></div>
+
+      <!--
+        The photo is fed INTO the filter with feImage, displaced, then masked
+        to the lens shape with feComposite operator="in" - the structure the
+        reference uses. backdrop-filter cannot do this: it only filters what
+        is already painted behind, so a subtle lens over a smooth gradient
+        renders as nothing at all.
+      -->
+      <svg id="stage" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="lg" filterUnits="userSpaceOnUse" x="0" y="0" width="100" height="100" color-interpolation-filters="sRGB">
+            <feImage id="photo" result="src" x="0" y="0" width="100" height="100" href=""></feImage>
+            <feGaussianBlur id="photoBlur" in="src" stdDeviation="0" result="srcBlur"></feGaussianBlur>
+
+            <feImage id="dispMap" result="dispImg" preserveAspectRatio="none" x="0" y="0" width="100" height="100" href=""></feImage>
+            <feGaussianBlur in="dispImg" stdDeviation="1" result="dispSmooth"></feGaussianBlur>
+
+            <feDisplacementMap id="dR" in="srcBlur" in2="dispSmooth" scale="0" xChannelSelector="R" yChannelSelector="G" result="pR"></feDisplacementMap>
+            <feColorMatrix in="pR" type="matrix" result="mR" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"></feColorMatrix>
+            <feDisplacementMap id="dG" in="srcBlur" in2="dispSmooth" scale="0" xChannelSelector="R" yChannelSelector="G" result="pG"></feDisplacementMap>
+            <feColorMatrix in="pG" type="matrix" result="mG" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0"></feColorMatrix>
+            <feDisplacementMap id="dB" in="srcBlur" in2="dispSmooth" scale="0" xChannelSelector="R" yChannelSelector="G" result="pB"></feDisplacementMap>
+            <feColorMatrix in="pB" type="matrix" result="mB" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0"></feColorMatrix>
+            <feComposite in="mR" in2="mG" operator="arithmetic" k2="1" k3="1" result="mRG"></feComposite>
+            <feComposite in="mRG" in2="mB" operator="arithmetic" k2="1" k3="1" result="displaced"></feComposite>
+
+            <feColorMatrix id="satNode" in="displaced" type="saturate" values="1" result="sat"></feColorMatrix>
+
+            <feImage id="specMap" result="specImg" preserveAspectRatio="none" x="0" y="0" width="100" height="100" href=""></feImage>
+            <feComponentTransfer in="specImg" result="specFaded">
+              <feFuncA id="specA" type="linear" slope="0.8"></feFuncA>
+            </feComponentTransfer>
+            <feBlend in="specFaded" in2="sat" mode="normal" result="glass"></feBlend>
+
+            <feComposite in="glass" in2="SourceGraphic" operator="in"></feComposite>
+          </filter>
+        </defs>
+
+        <rect id="lensHit" filter="url(#lg)" x="0" y="0" width="100" height="100" rx="50" fill="#000"></rect>
+      </svg>
+
+      <div class="stage-meta" id="meta">drag the lens</div>
+    </div>
+
+    <aside class="panel">
+      <div class="panel-brand">
+        <span class="panel-brand-dot"></span>
+        <span class="panel-brand-name">Liquid Optics</span>
+      </div>
+      <h1 class="panel-title">Liquid Glass</h1>
+      <p class="panel-sub">
+        A bevel profile refracted with Snell's law drives a displacement map,
+        bending the background through thickness, index and dispersion.
+      </p>
+
+      <div class="section">
+        <div class="section-label">Shape</div>
+        <div class="field">
+          <div class="field-row"><span class="field-label">Form</span></div>
+          <div class="select-row" id="cShape">
+            <button class="select-chip active" data-v="circle">Circle</button>
+            <button class="select-chip" data-v="lozenge">Lozenge</button>
+            <button class="select-chip" data-v="rect">Rounded rect</button>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-row"><span class="field-label">Size</span><span class="field-value" id="vSize">480</span></div>
+          <input id="cSize" type="range" min="120" max="820" value="480" />
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Surface</div>
+        <div class="select-row" id="cSurface">
+          <button class="select-chip active" data-v="convexSquircle">Squircle</button>
+          <button class="select-chip" data-v="convexCircle">Circle</button>
+          <button class="select-chip" data-v="concaveCircle">Concave</button>
+          <button class="select-chip" data-v="lip">Lip</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Geometry</div>
+        <div class="field">
+          <div class="field-row"><span class="field-label">Bezel width</span><span class="field-value" id="vBezel">60</span></div>
+          <input id="cBezel" type="range" min="4" max="200" value="60" />
+        </div>
+        <div class="field">
+          <div class="field-row"><span class="field-label">Glass thickness</span><span class="field-value" id="vThick">120</span></div>
+          <input id="cThick" type="range" min="2" max="240" value="120" />
+        </div>
+        <div class="field">
+          <div class="field-row"><span class="field-label">Refractive index</span><span class="field-value" id="vIor">1.50</span></div>
+          <input id="cIor" type="range" min="105" max="280" value="150" />
+        </div>
+        <div class="field">
+          <div class="field-row"><span class="field-label">Refraction level</span><span class="field-value" id="vLevel">1.00</span></div>
+          <input id="cLevel" type="range" min="0" max="300" value="100" />
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Optics</div>
+        <div class="field">
+          <div class="field-row"><span class="field-label">Blur</span><span class="field-value" id="vBlur">0.2</span></div>
+          <input id="cBlur" type="range" min="0" max="40" value="2" />
+        </div>
+        <div class="field">
+          <div class="field-row"><span class="field-label">Chromatic</span><span class="field-value" id="vChroma">0.20</span></div>
+          <input id="cChroma" type="range" min="0" max="60" value="20" />
+        </div>
+        <div class="field">
+          <div class="field-row"><span class="field-label">Saturation</span><span class="field-value" id="vSat">1.0</span></div>
+          <input id="cSat" type="range" min="100" max="700" value="100" />
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Specular highlight</div>
+        <div class="field">
+          <div class="field-row"><span class="field-label">Opacity</span><span class="field-value" id="vSpec">0.80</span></div>
+          <input id="cSpec" type="range" min="0" max="100" value="80" />
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Background</div>
+        <div class="select-row" id="cBg">
+          <button class="select-chip active" data-v="banner">Banner</button>
+          <button class="select-chip" data-v="work">Photo</button>
+          <button class="select-chip" data-v="stripes">Stripes</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Readout</div>
+        <pre class="readout" id="out"></pre>
+      </div>
+    </aside>
+
+    <!-- Their generator, unmodified. -->
+    <script src="./demo-utils.js"></script>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const wrap = document.querySelector(".stage-wrap");
+      const bgEl = $("bg"), stage = $("stage");
+      const photo = $("photo"), dispMap = $("dispMap"), specMap = $("specMap");
+      const filt = $("lg"), lens = $("lensHit");
+      const dR = $("dR"), dG = $("dG"), dB = $("dB");
+      const satNode = $("satNode"), specA = $("specA"), photoBlur = $("photoBlur");
+
+      const BG = {
+        banner: "./banner.jpeg",
+        work: "https://framerusercontent.com/images/AAGnFus9vmZEQDbHY74sJFdEzXE.jpg",
+        stripes: "",
+      };
+
+      // Chip groups behave like selects but match the house style.
+      const chips = {};
+      document.querySelectorAll(".select-row").forEach((row) => {
+        chips[row.id] = row.querySelector(".active").dataset.v;
+        row.addEventListener("click", (e) => {
+          const b = e.target.closest(".select-chip");
+          if (!b) return;
+          row.querySelectorAll(".select-chip").forEach((c) => c.classList.remove("active"));
+          b.classList.add("active");
+          chips[row.id] = b.dataset.v;
+          row.id === "cBg" ? setBg() : build();
+        });
+      });
+
+      let cx = 0, cy = 0, inited = false;
+
+      function build() {
+        const W = wrap.clientWidth, H = wrap.clientHeight;
+        if (!inited) { cx = W / 2; cy = H / 2; inited = true; }
+
+        stage.setAttribute("width", W);
+        stage.setAttribute("height", H);
+        stage.setAttribute("viewBox", "0 0 " + W + " " + H);
+
+        const size = +$("cSize").value;
+        const shape = chips.cShape;
+        const w = size;
+        const h = shape === "circle" ? size : Math.round(size * 0.52);
+        const radius = shape === "rect" ? Math.min(40, h / 2) : Math.min(w, h) / 2;
+
+        const bezel = +$("cBezel").value, thick = +$("cThick").value;
+        const ior = +$("cIor").value / 100, level = +$("cLevel").value / 100;
+        const blur = +$("cBlur").value / 10, chroma = +$("cChroma").value / 100;
+        const sat = +$("cSat").value / 100, spec = +$("cSpec").value / 100;
+
+        $("vSize").textContent = size;
+        $("vBezel").textContent = bezel;
+        $("vThick").textContent = thick;
+        $("vIor").textContent = ior.toFixed(2);
+        $("vLevel").textContent = level.toFixed(2);
+        $("vBlur").textContent = blur.toFixed(1);
+        $("vChroma").textContent = chroma.toFixed(2);
+        $("vSat").textContent = sat.toFixed(1);
+        $("vSpec").textContent = spec.toFixed(2);
+
+        const x = Math.round(cx - w / 2), y = Math.round(cy - h / 2);
+        lens.setAttribute("x", x); lens.setAttribute("y", y);
+        lens.setAttribute("width", w); lens.setAttribute("height", h);
+        lens.setAttribute("rx", radius);
+
+        // Filter region and feImage subregions are user-space and must track
+        // the lens, or the maps land somewhere else entirely.
+        filt.setAttribute("x", x); filt.setAttribute("y", y);
+        filt.setAttribute("width", w); filt.setAttribute("height", h);
+        [dispMap, specMap].forEach((n) => {
+          n.setAttribute("x", x); n.setAttribute("y", y);
+          n.setAttribute("width", w); n.setAttribute("height", h);
+        });
+        // The photo spans the whole stage so the scene reads as continuing
+        // behind the glass rather than a copy squeezed into the lens.
+        photo.setAttribute("x", 0); photo.setAttribute("y", 0);
+        photo.setAttribute("width", W); photo.setAttribute("height", H);
+
+        const maps = DemoUtils.generateGlassMaps({
+          surface: DemoUtils.surfaces[chips.cSurface],
+          refractiveIndex: ior,
+          bezelWidth: bezel,
+          glassThickness: thick,
+          width: w, height: h, radius,
+          samples: 128,
+        });
+
+        dispMap.setAttribute("href", maps.displacement.url);
+        specMap.setAttribute("href", maps.specularUrl);
+
+        const scale = maps.displacement.maxDisplacement * level;
+        [1 - chroma, 1, 1 + chroma].forEach((k, i) =>
+          [dR, dG, dB][i].setAttribute("scale", (scale * k).toFixed(2)));
+        satNode.setAttribute("values", String(sat));
+        specA.setAttribute("slope", String(spec));
+        photoBlur.setAttribute("stdDeviation", String(blur));
+
+        $("out").textContent =
+          "lens      " + w + " × " + h +
+          "\nposition  " + x + ", " + y +
+          "\nmax disp  " + maps.displacement.maxDisplacement.toFixed(1) +
+          "\nscale     " + scale.toFixed(1);
+      }
+
+      function setBg() {
+        const k = chips.cBg;
+        if (k === "stripes") {
+          bgEl.style.background = "repeating-linear-gradient(to right,#111 0 16px,#faf8f5 16px 32px)";
+          const c = document.createElement("canvas");
+          c.width = 32; c.height = 1;
+          const g = c.getContext("2d");
+          g.fillStyle = "#111"; g.fillRect(0, 0, 16, 1);
+          g.fillStyle = "#faf8f5"; g.fillRect(16, 0, 16, 1);
+          photo.setAttribute("href", c.toDataURL());
+          photo.setAttribute("preserveAspectRatio", "none");
+        } else {
+          bgEl.style.background = "url(" + BG[k] + ") center / cover";
+          photo.setAttribute("href", BG[k]);
+          photo.setAttribute("preserveAspectRatio", "xMidYMid slice");
+        }
+        build();
+      }
+
+      document.querySelectorAll('.panel input[type="range"]')
+        .forEach((el) => el.addEventListener("input", build));
+
+      let down = false, ox = 0, oy = 0;
+      lens.addEventListener("pointerdown", (e) => {
+        down = true;
+        const r = wrap.getBoundingClientRect();
+        ox = e.clientX - r.left - cx; oy = e.clientY - r.top - cy;
+        lens.setPointerCapture(e.pointerId);
+        $("meta").textContent = "";
+      });
+      lens.addEventListener("pointermove", (e) => {
+        if (!down) return;
+        const r = wrap.getBoundingClientRect();
+        cx = e.clientX - r.left - ox; cy = e.clientY - r.top - oy;
+        build();
+      });
+      lens.addEventListener("pointerup", () => (down = false));
+      window.addEventListener("resize", build);
+
+      setBg();
+    </script>
+  </body>
+</html>
