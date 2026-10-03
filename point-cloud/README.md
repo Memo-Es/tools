@@ -5,11 +5,11 @@ helix, wave, galaxy, ring, cloud — or your own text, sampled from the rendered
 font. Drag to orbit; the cursor pushes the points around.
 
 Controls follow the same language as
-[pixelated-text](https://github.com/Memo-Es/pixelated-text): near-black stage
+[pixelated-text](../typography/pixelated-text/): near-black stage
 on the left, `#111` panel on the right, Inter, chips for choices, mono tabular
 readouts.
 
-**Live:** https://memo-es.github.io/point-cloud-playground/
+**Live:** https://tools.memoesparza.com/point-cloud/
 
 ## Two pages in here
 

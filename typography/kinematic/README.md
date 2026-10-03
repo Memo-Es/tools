@@ -19,7 +19,7 @@ experiment with live controls for every parameter and export support.
 
 ## Usage
 
-Open the live playground at https://memo-es.github.io/typography-effects/kinematic/,
+Open the live playground at https://tools.memoesparza.com/typography/kinematic/,
 or open `index.html` in any modern browser. There's no build step. Press
 **Space** to pause and pick the moment for a still.
 

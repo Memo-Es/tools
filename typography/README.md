@@ -3,12 +3,12 @@
 Browser playgrounds for typographic motion. Type anything, tune every
 parameter live, and export a still, a video or the settings.
 
-Live at https://memo-es.github.io/typography-effects/
+Live at https://tools.memoesparza.com/typography/
 
 | Effect | | |
 | --- | --- | --- |
-| [Pixelated text](pixelated-text/) | Text that materialises through a shrinking block grid | [open](https://memo-es.github.io/typography-effects/pixelated-text/) |
-| [Kinematic type](kinematic/) | A glyph swinging on its axis in stepped bands, with a heat trail | [open](https://memo-es.github.io/typography-effects/kinematic/) |
+| [Pixelated text](pixelated-text/) | Text that materialises through a shrinking block grid | [open](https://tools.memoesparza.com/typography/pixelated-text/) |
+| [Kinematic type](kinematic/) | A glyph swinging on its axis in stepped bands, with a heat trail | [open](https://tools.memoesparza.com/typography/kinematic/) |
 
 ## Structure
 
@@ -33,8 +33,9 @@ browser.
 
 `pixelated-text` was its own repository and moved here with its history.
 That repository has been deleted, so its old address,
-memo-es.github.io/pixelated-text, no longer resolves. The playground lives
-at memo-es.github.io/typography-effects/pixelated-text/.
+memo-es.github.io/pixelated-text, no longer resolves. Typography effects has
+since moved into the tools repo too, and the playground lives at
+tools.memoesparza.com/typography/pixelated-text/.
 
 ---
 

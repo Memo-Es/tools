@@ -11,7 +11,7 @@ Type anything and watch it materialize through shrinking pixel blocks. A browser
 
 ## Usage
 
-Open the live playground at https://memo-es.github.io/typography-effects/pixelated-text/, or open `index.html` directly in any modern browser. No build step required. Part of [Typography Effects](../); its styles come from the shared `../ds.css`.
+Open the live playground at https://tools.memoesparza.com/typography/pixelated-text/, or open `index.html` directly in any modern browser. No build step required. Part of [Typography Effects](../); its styles come from the shared `../ds.css`.
 
 ## Project structure
 

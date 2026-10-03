@@ -3,7 +3,7 @@
 An interactive color-harmony tool. Pick a base color, drag handles around the
 wheel to explore harmonies, generate scales, and export your palette.
 
-**Live:** https://memo-es.github.io/color-wheel/
+**Live:** https://tools.memoesparza.com/color-wheel/
 
 ## Features
 
