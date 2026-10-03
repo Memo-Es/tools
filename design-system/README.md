@@ -1,4 +1,4 @@
-# tools-design-system
+# design-system
 
 The design system for my tools, which I call Memo Terminal. The screen is black and set in one size of JetBrains Mono, with labels written the way you would name a variable, and anything that gets printed comes out as a plain A4 sheet in Inter Tight.
 
@@ -8,25 +8,23 @@ I made it from [invoices](https://github.com/Memo-Es/invoices) so the next tool 
 
 ## Usage
 
-To always get the latest version, link the stylesheet from jsDelivr, which serves it straight from this repo:
+Every tool in this repo can link it from the site, since the build puts it at `/design-system/`:
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Memo-Es/tools-design-system@main/dist/index.css">
+<link rel="stylesheet" href="/design-system/index.css">
 ```
 
-A tool that links it this way picks up a change a few hours after it lands on `main`, without being rebuilt.
-
-To keep a project on one version until you decide to move it, install it from GitHub instead:
-
-```sh
-npm install github:Memo-Es/tools-design-system
-```
+A tool with a build step can import it instead, through npm workspaces, the way invoices does:
 
 ```js
-import 'tools-design-system'
+import 'tools-design-system/tokens.css'
 ```
 
-npm writes the exact commit into the lockfile, so the project stays where it is until you run `npm update tools-design-system`.
+Projects outside this repo can link it from jsDelivr, which serves it straight from GitHub and picks up a change a few hours after it lands on `main`:
+
+```html
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Memo-Es/tools@main/design-system/dist/index.css">
+```
 
 Then put `mt-root` on the element that holds the tool and use the classes:
 
@@ -57,7 +55,7 @@ CI runs `npm run check`, which fails when `dist/` doesn't match `src/`, so an ed
 ## Limits
 
 - The screen only has a dark theme. The light surface is the paper.
-- Renaming or removing a variable or a class breaks every tool that links `@main`, so check those tools before changing a name.
+- Renaming or removing a variable or a class breaks every tool that uses it, so check them all before changing a name.
 - `index.css` fetches fonts from Google. Load `tokens.css` and `components.css` on their own and host the fonts yourself if a tool shouldn't make that request.
 - There is no JavaScript. Switches and buttons only change look when the tool's own code moves `is-on`, and the fold is a plain `<details>` element.
 - Two of the greys are under 4.5:1 for small text: `--mt-dim` (3.7:1 on the panel) and `--mt-placeholder` (2.0:1). Don't put anything people have to read in them alone.

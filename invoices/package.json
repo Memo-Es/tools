@@ -11,7 +11,7 @@
   "dependencies": {
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "tools-design-system": "github:Memo-Es/tools-design-system"
+    "tools-design-system": "*"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",

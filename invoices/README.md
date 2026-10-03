@@ -12,8 +12,10 @@ I was making invoices by duplicating an old file and fixing the numbers by hand.
 
 ```sh
 npm install
-npm run dev
+npm run dev -w invoices
 ```
+
+Run both from the root of the repo.
 
 Open http://localhost:5173.
 
@@ -42,7 +44,7 @@ Open `/?demo=mono` (or `editorial`, `grotesk`, `receipt`) in dev to load sample 
 ## How it works
 
 - Vite, React and TypeScript, no backend. `npm run build` makes a static site in `dist/` that can go on any static host.
-- Colours and fonts come from [tools-design-system](https://github.com/Memo-Es/tools-design-system), installed from GitHub, so a change there reaches this app after `npm update tools-design-system`.
+- Colours and fonts come from the design system in [`../design-system`](../design-system), linked through npm workspaces, so a change there reaches this app on the next build.
 - Everything is stored in the browser's localStorage (`src/lib/store.ts`). Clearing site data wipes your details and clients.
 - The PDF is the browser's own print output, so text stays selectable. Templates are A4 and sized in millimetres (`src/paper.css`).
 - The invoice number advances the first time you save a PDF with the current number. Saving the same invoice again doesn't skip a number.

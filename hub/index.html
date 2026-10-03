@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tools · Memo Esparza</title>
+  <meta name="description" content="Small tools and playgrounds by Memo Esparza: invoices, a colour wheel, a point cloud and typographic motion.">
+  <link rel="stylesheet" href="/design-system/index.css">
+  <style>
+    html, body { margin: 0; min-height: 100%; background: var(--mt-bg); }
+    main { padding: 8px 32px 48px; max-width: 64rem; }
+    .tools { list-style: none; margin: 0; padding: 0; }
+    .tools li { display: grid; grid-template-columns: 14rem 1fr auto; gap: 16px; align-items: baseline; padding: 12px 0; border-bottom: 1px dashed var(--mt-line); }
+    .tools a.name { color: var(--mt-hi); text-decoration: none; font-weight: 500; }
+    .tools a.name:hover, .tools a.name:focus-visible { text-decoration: underline; }
+    .tools p { margin: 0; color: var(--mt-text); }
+    @media (max-width: 640px) {
+      main { padding: 8px 16px 48px; }
+      .tools li { grid-template-columns: 1fr auto; }
+      .tools p { grid-column: 1 / -1; grid-row: 2; }
+    }
+  </style>
+</head>
+<body class="mt-root">
+  <header class="mt-bar">
+    <span class="mt-dim">&gt;</span> TOOLS <span class="mt-dim">(6)</span>
+    <span class="mt-dots"></span>
+    <a class="mt-btn" href="https://www.memoesparza.com">[MEMOESPARZA.COM]</a>
+    <a class="mt-btn" href="https://github.com/Memo-Es/tools">[SOURCE]</a>
+  </header>
+  <main>
+    <section class="mt-section">
+      <div class="mt-rule"></div>
+      <h2>~ $ TOOLS</h2>
+      <div class="mt-rule"></div>
+      <ul class="tools">
+        <li><a class="name" href="/invoices/">Invoices</a><p>Invoices and receipts for clients and collaborators, saved as a PDF.</p><a class="mt-btn" href="/invoices/" aria-hidden="true" tabindex="-1">[OPEN]</a></li>
+        <li><a class="name" href="/color-wheel/">Color wheel</a><p>Pick a base colour, drag handles around the wheel to explore harmonies, generate scales and export the palette.</p><a class="mt-btn" href="/color-wheel/" aria-hidden="true" tabindex="-1">[OPEN]</a></li>
+        <li><a class="name" href="/point-cloud/">Point cloud</a><p>A WebGL point cloud that gathers into the shape you pick, or into your own text.</p><a class="mt-btn" href="/point-cloud/" aria-hidden="true" tabindex="-1">[OPEN]</a></li>
+        <li><a class="name" href="/point-cloud/editions/">Point cloud editions</a><p>An abstract cloud that turns into a shape or your own text, inside a rotating band of type.</p><a class="mt-btn" href="/point-cloud/editions/" aria-hidden="true" tabindex="-1">[OPEN]</a></li>
+        <li><a class="name" href="/typography/pixelated-text/">Pixelated text</a><p>Text that materialises through a shrinking block grid.</p><a class="mt-btn" href="/typography/pixelated-text/" aria-hidden="true" tabindex="-1">[OPEN]</a></li>
+        <li><a class="name" href="/typography/kinematic/">Kinematic type</a><p>A glyph swinging on its axis in stepped bands, with a heat trail.</p><a class="mt-btn" href="/typography/kinematic/" aria-hidden="true" tabindex="-1">[OPEN]</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

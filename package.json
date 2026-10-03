@@ -1,0 +1,9 @@
+{
+  "name": "tools",
+  "private": true,
+  "workspaces": ["design-system", "invoices"],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "npm run check -w tools-design-system"
+  }
+}
