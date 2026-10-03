@@ -1,0 +1,21 @@
+{
+  "name": "tools-design-system",
+  "version": "0.1.0",
+  "description": "Memo Terminal: tokens and CSS components for Memo's tools. Labels like code on screen, a quiet grotesk on paper.",
+  "type": "module",
+  "files": ["dist", "src"],
+  "style": "dist/index.css",
+  "exports": {
+    ".": "./dist/index.css",
+    "./index.css": "./dist/index.css",
+    "./tokens.css": "./dist/tokens.css",
+    "./components.css": "./dist/components.css",
+    "./fonts.css": "./dist/fonts.css",
+    "./tokens.json": "./src/tokens.json"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/build.mjs --check"
+  },
+  "repository": { "type": "git", "url": "git+https://github.com/Memo-Es/tools-design-system.git" }
+}
