@@ -1,39 +1,34 @@
 # tools-design-system
 
-Memo Terminal, the design system for Memo's tools: a dark, single-size monospace screen where labels read like code, and quiet A4 sheets in a grotesk for anything printed. It started as the look of [invoices](https://github.com/Memo-Es/invoices).
+The design system for my tools, which I call Memo Terminal. The screen is black and set in one size of JetBrains Mono, with labels written the way you would name a variable, and anything that gets printed comes out as a plain A4 sheet in Inter Tight.
 
-The editable version, with live previews and usage notes for every token and component, is the **Memo Terminal** design system page on claude.ai. This repo is what projects install.
+## Why
 
-## Use it
+I made it from [invoices](https://github.com/Memo-Es/invoices) so the next tool can look like that one without copying its stylesheet by hand, and so I can change a colour in one place and have every tool follow.
 
-### Auto-updating
+## Usage
 
-Link the latest 0.x release from jsDelivr. Every project that does this picks up a new release without a rebuild, once the CDN cache refreshes (usually within a few hours):
+To always get the latest version, link the stylesheet from jsDelivr, which serves it straight from this repo:
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Memo-Es/tools-design-system@0/dist/index.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Memo-Es/tools-design-system@main/dist/index.css">
 ```
 
-### Pinned
+A tool that links it this way picks up a change a few hours after it lands on `main`, without being rebuilt.
 
-Install a tagged version. The project only changes when you change the tag:
+To keep a project on one version until you decide to move it, install it from GitHub instead:
 
 ```sh
-npm install github:Memo-Es/tools-design-system#v0.1.0
+npm install github:Memo-Es/tools-design-system
 ```
 
 ```js
-import 'tools-design-system'            // fonts, tokens and components
-import 'tools-design-system/tokens.css' // or just the variables
+import 'tools-design-system'
 ```
 
-Both ways load the same four files from `dist/`: `fonts.css` (Google Fonts), `tokens.css`, `components.css` and `index.css`, which imports the other three.
+npm writes the exact commit into the lockfile, so the project stays where it is until you run `npm update tools-design-system`.
 
-## What's in it
-
-- **Variables**, all prefixed `--mt-` so they can't collide with a project's own: colours (`--mt-bg`, `--mt-panel`, `--mt-text`, `--mt-dim`, `--mt-hi`, `--mt-paper`, `--mt-ink`…), spacing (`--mt-space-2` to `--mt-space-32`), `--mt-radius-0`, `--mt-shadow-sheet` and font stacks (`--mt-font-mono`, `--mt-font-grotesk`…).
-- **Type classes**: `.mt-t-body`, `.mt-t-heading`, `.mt-t-label`, and the paper styles `.mt-t-gr-big`, `.mt-t-gr-num`, `.mt-t-rc-body`…
-- **Components**, as classes: put `mt-root` on the container, then `mt-bar`, `mt-btn` (`is-on`, `--primary`, `--add`), `mt-switch`, `mt-section` with `mt-rule`, `mt-grid` / `mt-field` / `mt-label` / `mt-input`, `mt-chips`, `mt-item`, `mt-details`, `mt-status`, and `mt-stage` with `mt-sheet`. The design system page has the markup for each.
+Then put `mt-root` on the element that holds the tool and use the classes:
 
 ```html
 <div class="mt-root">
@@ -46,12 +41,23 @@ Both ways load the same four files from `dist/`: `fonts.css` (Google Fonts), `to
 </div>
 ```
 
-## Change it
+## What's in it
 
-`src/tokens.json` is the same file the design system page edits, and `src/components.css` is its component stylesheet. `dist/` is generated from them.
+- `dist/tokens.css` has the colours, spacing, the shadow and the font stacks as variables, all starting with `--mt-` so they don't clash with a project's own (`--mt-bg`, `--mt-text`, `--mt-dim`, `--mt-hi`, `--mt-paper`, `--mt-ink`, `--mt-space-16`, `--mt-font-mono`). It also has a class for each text style, like `.mt-t-body` or `.mt-t-gr-num`.
+- `dist/components.css` has the pieces of the invoices editor as classes: the top bar (`mt-bar`), bracket buttons (`mt-btn`, with `is-on`, `mt-btn--primary` and `mt-btn--add`), switches, section heads, fields, chip rows, item rows, the fold, the status line and the A4 sheet (`mt-sheet`).
+- `dist/fonts.css` loads the five font families from Google Fonts.
+- `dist/index.css` imports the other three.
 
-1. Make the change on the design system page and ask Claude to sync it here, or edit `src/` directly.
-2. `npm run build`. CI fails if `dist/` doesn't match `src/`.
-3. Release it with a tag: `git tag v0.1.1 && git push --tags`.
+## How it works
 
-Bump the patch for changed values, the minor for anything added. Renaming or removing a variable or class breaks the projects using it, so save those for `v1.0.0`; auto-updating links on `@0` won't follow it there.
+`src/tokens.json` is the same file the Memo Terminal design system page edits on claude.ai, and `src/components.css` is the same stylesheet, so a change made on that page gets copied into `src/` and `npm run build` writes `dist/` from it. The build script has no dependencies.
+
+CI runs `npm run check`, which fails when `dist/` doesn't match `src/`, so an edit to `src/` that was never built can't go unnoticed.
+
+## Limits
+
+- The screen only has a dark theme. The light surface is the paper.
+- Renaming or removing a variable or a class breaks every tool that links `@main`, so check those tools before changing a name.
+- `index.css` fetches fonts from Google. Load `tokens.css` and `components.css` on their own and host the fonts yourself if a tool shouldn't make that request.
+- There is no JavaScript. Switches and buttons only change look when the tool's own code moves `is-on`, and the fold is a plain `<details>` element.
+- Two of the greys are under 4.5:1 for small text: `--mt-dim` (3.7:1 on the panel) and `--mt-placeholder` (2.0:1). Don't put anything people have to read in them alone.
