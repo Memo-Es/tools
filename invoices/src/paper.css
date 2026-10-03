@@ -1,0 +1,97 @@
+/* A4 paper, sized in real units so screen and PDF match. */
+.paper {
+  width: 210mm;
+  height: 297mm;
+  box-sizing: border-box;
+  background: var(--mt-paper);
+  color: var(--mt-ink);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+.paper * { box-sizing: border-box; }
+.paper dl, .paper dd, .paper p { margin: 0; }
+
+/* ---------- Editorial ---------- */
+.ed { padding: 14mm 15mm 11mm; font-family: var(--mt-font-serif); font-size: 9.5pt; line-height: 1.3; }
+.ed .sans { font-family: var(--mt-font-sans); font-size: 6.8pt; line-height: 1.4; }
+.ed-top { display: grid; grid-template-columns: 1fr 1fr 1fr; }
+.ed-top > :last-child { text-align: right; }
+.ed-contact { margin-top: 3mm; }
+.ed-contact > div { display: grid; grid-template-columns: 12mm 1fr; }
+.ed-mark { display: flex; justify-content: space-between; margin-top: 10mm; font-size: 22pt; line-height: 1; }
+.ed-billto { display: grid; grid-template-columns: 1fr 2fr; margin-top: 22mm; }
+.ed-billto strong { font-weight: 600; }
+.ed-label { color: var(--mt-paper-label); }
+.ed-table { width: 100%; margin-top: 10mm; border-collapse: collapse; }
+.ed-table th { font-weight: 400; text-align: left; padding-bottom: 1.2mm; border-bottom: 0.5pt solid var(--mt-ink); }
+.ed-table td { vertical-align: top; padding: 2mm 0; border-bottom: 0.5pt solid var(--mt-paper-rule); }
+.ed-table .num { text-align: right; width: 22mm; }
+.ed-item { font-weight: 600; }
+.ed-detail { color: var(--mt-paper-detail); }
+.ed .ed-totals { width: 72mm; margin: 3mm 0 0 auto; font-family: var(--mt-font-sans); font-size: 6.8pt; }
+.ed-totals > div { display: flex; justify-content: space-between; padding: 1.4mm 0; border-bottom: 0.5pt solid var(--mt-paper-rule); }
+.ed-total { font-weight: 600; border-bottom-color: var(--mt-ink) !important; }
+.ed-bottom { margin-top: auto; }
+.ed-due { font-size: 11pt; font-weight: 600; margin-bottom: 3mm; }
+.ed-pay { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6mm; padding-bottom: 3mm; border-bottom: 0.5pt solid var(--mt-ink); }
+.ed-notes { margin-top: 2mm; }
+.ed-foot { display: flex; justify-content: space-between; margin-top: 6mm; padding-top: 1.5mm; border-top: 0.5pt solid var(--mt-ink); }
+
+/* ---------- Mono ---------- */
+.mo { padding: 16mm 15mm 14mm; font-family: var(--mt-font-sans); font-size: 6.5pt; line-height: 1.4; }
+.mo .m { font-family: var(--mt-font-plex); font-size: 8.5pt; line-height: 1.35; }
+.mo-head { display: flex; justify-content: space-between; align-items: flex-start; min-height: 42mm; }
+.mo-sender { margin: 10mm 0 2mm; }
+.mo-logo { max-width: 34mm; max-height: 38mm; object-fit: contain; }
+.mo-grid { display: grid; grid-template-columns: 1.4fr 1fr 0.6fr 1fr; column-gap: 6mm; }
+.mo-meta { margin-top: 18mm; }
+.mo-label { color: var(--mt-paper-detail); margin-bottom: 0.5mm; }
+.mo-thead { margin-top: 14mm; padding-bottom: 1mm; border-bottom: 0.5pt solid var(--mt-ink); }
+.mo-row { padding-top: 3mm; }
+.mo-detail { color: var(--mt-paper-label); margin-top: 0.5mm; }
+.mo-totals { margin-top: auto; }
+.mo-trow { padding: 1.4mm 0; }
+.mo-trow > :nth-child(3), .mo-trow > :nth-child(4) { border-top: 0.5pt solid var(--mt-ink); margin-top: -1.4mm; padding-top: 1.4mm; }
+.mo-total > :nth-child(3), .mo-total > :nth-child(4) { border-bottom: 0.8pt solid var(--mt-ink); padding-bottom: 1.4mm; }
+.mo-notes { margin-top: 6mm; }
+.mo-span { grid-column: 2 / span 3; }
+.mo-foot { margin-top: 16mm; }
+.mo-foot > :nth-child(3) { grid-column: 3 / span 2; }
+
+/* ---------- Grotesk ---------- */
+.gr { padding: 8mm 10mm 7mm; font-family: var(--mt-font-grotesk); font-size: 9pt; line-height: 1.22; }
+.gr-2 { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+.gr-big { font-size: 26pt; line-height: 1; letter-spacing: -0.015em; }
+.gr-head { margin-bottom: 4mm; }
+.gr-parties { margin-top: 9mm; }
+.gr-kv > div { display: grid; grid-template-columns: 30mm 1fr; }
+.gr-services { margin-top: 26mm; margin-bottom: 4mm; }
+.gr-item { margin-bottom: 3mm; }
+.gr-dim { color: var(--mt-paper-dim); }
+.gr-totals { margin-top: auto; }
+.gr-totals .gr-kv > div { margin-bottom: 0; }
+.gr-total { margin-top: 3mm; }
+.gr-number { margin-top: 14mm; align-items: center; }
+.gr-num { font-size: 58pt; line-height: 1; letter-spacing: -0.03em; }
+.gr-tiny { font-size: 5pt; line-height: 1.3; }
+.gr-tiny > div { grid-template-columns: 30mm 1fr; }
+.gr-pay { margin-top: 14mm; min-height: 38mm; }
+.gr-foot { margin-top: 6mm; font-size: 5pt; align-items: end; }
+.gr-foot > :last-child { font-size: 7pt; }
+
+/* ---------- Receipt (Grotesk family) ---------- */
+.rc { padding: 14mm 14mm 12mm; }
+.rc .rc-body { margin-top: 18mm; font-size: 11pt; line-height: 1.5; max-width: 160mm; text-wrap: pretty; }
+.rc-table { margin-top: 14mm; }
+.rc-row { display: grid; grid-template-columns: 1fr 18mm 30mm 32mm; column-gap: 4mm; padding: 2mm 0; border-top: 0.5pt solid var(--mt-ink); }
+.rc-th { border-top: 0; padding-bottom: 1mm; }
+.rc-sub { border-top-color: var(--mt-paper-rule); }
+.rc-total { border-top-width: 1.2pt; font-weight: 500; }
+.rc-num { text-align: right; }
+.rc-sign { margin-top: auto; align-items: end; }
+.rc-place { margin-top: 3mm; }
+.rc-line { border-top: 0.5pt solid var(--mt-ink); padding-top: 2mm; margin-right: 12mm; }
+.rc-notes { margin-top: 10mm; color: var(--mt-paper-dim); font-size: 6.5pt; }
