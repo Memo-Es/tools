@@ -1,0 +1,1249 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Line Scale Playground</title>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+  :root {
+    --bg: #0a0a0a;
+    --panel: #111;
+    --panel-border: rgba(255,255,255,0.08);
+    --text: #FAF8F5;
+    --text-dim: rgba(250,248,245,0.55);
+    --text-dimmer: rgba(250,248,245,0.35);
+    --accent: #FAF8F5;
+    --accent-hover: #ffffff;
+    --terracotta: #C45D35;
+    --radius: 6px;
+    --t-fast: 150ms ease;
+    --t-base: 200ms ease;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--text);
+    font-family: "Inter", system-ui, sans-serif;
+    min-height: 100vh; overflow-x: hidden;
+  }
+  .app { display: grid; grid-template-columns: 1fr 400px; min-height: 100vh; }
+  @media (max-width: 960px) {
+    .app { grid-template-columns: 1fr; }
+    .panel { border-left: none; border-top: 1px solid var(--panel-border); }
+  }
+
+  /* Stage */
+  .stage { position: relative; padding: 32px 40px 24px 40px; display: flex; flex-direction: column; }
+  .stage-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 24px; }
+  .stage-title { font-family: "Inter", sans-serif; font-size: 22px; margin: 0; font-weight: 300; letter-spacing: -0.02em; }
+  .stage-meta { font-size: 12px; color: var(--text-dimmer); font-variant-numeric: tabular-nums; }
+  .stage-meta strong { color: var(--text-dim); font-weight: 500; }
+
+  .canvas-frame {
+    flex: 1; min-height: 600px;
+    background: #FAF8F5;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+    cursor: crosshair;
+  }
+  .scale-svg { width: 100%; height: 100%; display: block; }
+
+  /* Attractor handles */
+  .attractor {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    cursor: grab;
+    z-index: 2;
+    transition: filter 140ms ease;
+    display: flex; align-items: center; justify-content: center;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
+  }
+  .attractor:hover { filter: drop-shadow(0 0 8px rgba(196,93,53,0.4)) drop-shadow(0 2px 6px rgba(0,0,0,0.25)); }
+  .attractor.dragging { cursor: grabbing; }
+  .attractor-label {
+    position: absolute;
+    transform: translate(14px, -50%);
+    font-size: 10px; font-variant-numeric: tabular-nums;
+    color: rgba(0,0,0,0.55); background: rgba(255,255,255,0.85);
+    padding: 2px 6px; border-radius: 3px;
+    pointer-events: none; white-space: nowrap;
+    font-family: ui-monospace, monospace;
+  }
+  .canvas-frame.dark .attractor-label { color: rgba(250,248,245,0.7); background: rgba(10,10,10,0.8); }
+
+  .hint {
+    position: absolute; bottom: 12px; left: 12px;
+    font-size: 11px; color: rgba(0,0,0,0.35);
+    pointer-events: none; font-family: ui-monospace, monospace;
+  }
+  .canvas-frame.dark .hint { color: rgba(250,248,245,0.35); }
+
+  .stage-actions { display: flex; gap: 8px; margin-top: 20px; align-items: center; flex-wrap: wrap; }
+  .btn {
+    background: transparent; color: var(--text);
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 9px 16px; font-family: inherit; font-size: 13px; font-weight: 500;
+    border-radius: var(--radius); cursor: pointer;
+    transition: background var(--t-fast), border-color var(--t-fast);
+  }
+  .btn:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.22); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--bg); }
+
+  /* Export button top-right overlay on canvas */
+  .export-btn {
+    position: absolute; top: 12px; right: 12px; z-index: 3;
+    background: rgba(10,10,10,0.75); color: #fff;
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 8px 14px; font-family: inherit; font-size: 12px; font-weight: 500;
+    border-radius: var(--radius); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    backdrop-filter: blur(8px);
+    transition: background var(--t-fast);
+  }
+  .export-btn:hover { background: rgba(10,10,10,0.9); }
+
+  /* Panel */
+  .panel {
+    background: var(--panel); border-left: 1px solid var(--panel-border);
+    padding: 32px 28px 40px 28px;
+    overflow-y: auto; max-height: 100vh; position: sticky; top: 0;
+  }
+  .panel-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .panel-brand-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 2px; }
+  .panel-brand-name { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); font-weight: 500; }
+  .panel-title { font-family: "Inter", sans-serif; font-weight: 300; font-size: 28px; letter-spacing: -0.03em; margin: 0 0 8px 0; }
+  .panel-sub { font-size: 13px; color: var(--text-dim); line-height: 1.5; margin: 0 0 28px 0; }
+
+  .section { margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid var(--panel-border); }
+  .section:last-child { border-bottom: none; margin-bottom: 0; }
+  .section-label { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dimmer); margin-bottom: 12px; }
+
+  .field { margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  .field-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .field-name { font-size: 12px; color: var(--text); font-weight: 500; }
+  .field-value { font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; font-family: ui-monospace, monospace; }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 2px; background: rgba(255,255,255,0.1); border-radius: 1px; outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 12px; height: 12px; background: var(--text); border-radius: 50%; cursor: pointer;
+    border: none; box-shadow: none;
+    transition: transform var(--t-fast);
+  }
+  input[type="range"]::-webkit-slider-thumb:active { transform: scale(1.2); }
+  input[type="range"]::-moz-range-thumb {
+    width: 12px; height: 12px; background: var(--text); border-radius: 50%; cursor: pointer;
+    border: none; box-shadow: none;
+  }
+
+  .select-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .select-chip {
+    padding: 6px 12px; background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text-dim); font-family: inherit; font-size: 12px;
+    border-radius: var(--radius); cursor: pointer;
+    transition: color var(--t-fast), border-color var(--t-fast); white-space: nowrap;
+  }
+  .select-chip:hover { color: var(--text); border-color: rgba(255,255,255,0.25); }
+  .select-chip.active { background: transparent; border-color: var(--text); color: var(--text); }
+
+  .easing-select {
+    background: #0a0a0a; color: var(--text);
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 8px 10px; font-family: inherit; font-size: 12px;
+    border-radius: 6px; width: 100%; cursor: pointer;
+  }
+  .easing-select:focus { outline: none; border-color: var(--accent); }
+
+  .color-row { display: flex; gap: 8px; align-items: center; }
+  .color-swatch {
+    width: 28px; height: 28px; border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.16); cursor: pointer;
+  }
+  .color-swatch.active { border-color: var(--text); box-shadow: 0 0 0 2px rgba(255,255,255,0.2); }
+  input[type="color"] {
+    -webkit-appearance: none; appearance: none;
+    width: 28px; height: 28px; padding: 0;
+    border: 1px solid rgba(255,255,255,0.16); border-radius: 6px;
+    cursor: pointer; background: transparent;
+  }
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
+
+  /* Toggle switch */
+  .toggle-row { display: flex; justify-content: space-between; align-items: center; }
+  .toggle {
+    width: 36px; height: 20px; background: rgba(255,255,255,0.1);
+    border-radius: 10px; position: relative; cursor: pointer;
+    transition: background var(--t-fast); border: none; padding: 0;
+  }
+  .toggle.on { background: var(--text); }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px; border-radius: 50%; background: var(--text-dim);
+    transition: transform var(--t-fast), background var(--t-fast);
+  }
+  .toggle.on::after { transform: translateX(16px); background: var(--bg); }
+
+  /* Attractor list */
+  .attractor-list { display: flex; flex-direction: column; gap: 8px; }
+  .attractor-card {
+    background: #0a0a0a; border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--radius); padding: 10px 12px; cursor: pointer;
+    transition: border-color var(--t-fast);
+  }
+  .attractor-card:hover { border-color: rgba(255,255,255,0.2); }
+  .attractor-card.selected { border-color: var(--terracotta); }
+  .attractor-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .attractor-card-title {
+    font-size: 12px; color: var(--text); font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .attractor-card-title .idx-box {
+    width: 18px; height: 18px; border-radius: 4px;
+    color: #fff; font-size: 10px; text-align: center; line-height: 18px;
+    font-weight: 600;
+  }
+  .remove-btn {
+    background: transparent; border: none; color: var(--text-dimmer);
+    cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 4px;
+  }
+  .remove-btn:hover { color: var(--terracotta); background: rgba(196,93,53,0.1); }
+  .mini-field { margin-bottom: 6px; }
+  .mini-field:last-child { margin-bottom: 0; }
+  .mini-field-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .mini-field-name { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; }
+  .mini-field-value { font-size: 10px; color: var(--text-dim); font-family: ui-monospace, monospace; }
+
+  .mini-chips { display: flex; gap: 4px; margin-bottom: 6px; }
+  .mini-chip {
+    flex: 1; padding: 5px 6px; background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text-dim); font-family: inherit; font-size: 10px;
+    border-radius: 4px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .mini-chip:hover { color: var(--text); }
+  .mini-chip.active { background: transparent; border-color: rgba(250,248,245,0.5); color: var(--text); }
+
+  .add-btn {
+    background: transparent; border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text-dimmer); font-family: inherit; font-size: 12px;
+    padding: 10px; border-radius: var(--radius); cursor: pointer; width: 100%;
+    transition: color var(--t-fast), border-color var(--t-fast);
+  }
+  .add-btn:hover { color: var(--text-dim); border-color: rgba(255,255,255,0.22); }
+
+  .footer-note { font-size: 11px; color: var(--text-dimmer); line-height: 1.5; margin-top: 24px; }
+
+  /* ─── Export modal ───────────────────────────────────────────────── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    animation: fadeIn 160ms ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    width: min(720px, 92vw); max-height: 88vh;
+    background: var(--panel); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px; overflow: hidden;
+    display: flex; flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .modal-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 24px; border-bottom: 1px solid var(--panel-border);
+  }
+  .modal-title { font-family: "Inter", sans-serif; font-size: 20px; margin: 0; font-weight: 300; letter-spacing: -0.02em; }
+  .modal-close {
+    background: transparent; border: none; color: var(--text-dim);
+    font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: 4px;
+  }
+  .modal-close:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+  .modal-tabs {
+    display: flex; gap: 2px; padding: 12px 24px 0 24px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  .modal-tab {
+    background: transparent; border: none; padding: 10px 16px;
+    color: var(--text-dim); font-family: inherit; font-size: 13px; font-weight: 500;
+    cursor: pointer; border-radius: 6px 6px 0 0;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .modal-tab:hover { color: var(--text); }
+  .modal-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+  .modal-body { padding: 24px; overflow-y: auto; flex: 1; }
+  .modal-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 24px; border-top: 1px solid var(--panel-border);
+    background: #0a0a0a;
+  }
+  .modal-hint { font-size: 11px; color: var(--text-dimmer); }
+
+  .export-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+  .export-row.full { grid-template-columns: 1fr; }
+  .export-field-label { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; font-weight: 500; }
+  .preset-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .number-input {
+    background: #0a0a0a; color: var(--text);
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 8px 10px; font-family: ui-monospace, monospace; font-size: 12px;
+    border-radius: 6px; width: 100%;
+  }
+  .number-input:focus { outline: none; border-color: var(--accent); }
+
+  .dims-display {
+    font-size: 11px; color: var(--text-dimmer); font-family: ui-monospace, monospace;
+    padding: 8px 12px; background: #0a0a0a; border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.06);
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Falloff curves (distance d, radius r) → 0..1 influence
+// ─────────────────────────────────────────────────────────────────────────────
+const FALLOFFS = {
+  smoothstep: (d, r) => { if (d >= r) return 0; const t = 1 - d / r; return t * t * (3 - 2 * t); },
+  quadratic:  (d, r) => { if (d >= r) return 0; const t = 1 - d / r; return t * t; },
+  gaussian:   (d, r) => Math.exp(-Math.pow(d / (r * 0.45), 2)),
+  linear:     (d, r) => Math.max(0, 1 - d / r),
+  cosine:     (d, r) => { if (d >= r) return 0; return 0.5 + 0.5 * Math.cos(Math.PI * (d / r)); },
+};
+const FALLOFF_NAMES = Object.keys(FALLOFFS);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Compute per-line left/right half widths.
+// Each attractor has a `side` ∈ {'left','right','both'} — only that side
+// receives its influence. Combined by max().
+// ─────────────────────────────────────────────────────────────────────────────
+function computeLineWidths(count, attractors, minWidth, maxWidth, falloffFn) {
+  const rows = [];
+  for (let i = 0; i < count; i++) {
+    const p = count === 1 ? 0.5 : i / (count - 1);
+    let L = 0, R = 0;
+    for (const a of attractors) {
+      const v = falloffFn(Math.abs(p - a.p), a.r) * a.strength;
+      if ((a.side === 'left'  || a.side === 'both') && v > L) L = v;
+      if ((a.side === 'right' || a.side === 'both') && v > R) R = v;
+    }
+    L = Math.max(0, Math.min(1, L));
+    R = Math.max(0, Math.min(1, R));
+    const minH = minWidth * 0.5, maxH = maxWidth * 0.5;
+    rows.push({
+      wL: minH + (maxH - minH) * L,
+      wR: minH + (maxH - minH) * R,
+    });
+  }
+  return rows;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Handle shapes (SVG-rendered, same size box). All kinds fit in 20×20.
+// ─────────────────────────────────────────────────────────────────────────────
+function HandleShape({ kind, color, size = 14 }) {
+  const s = size;
+  const common = { width: s + 6, height: s + 6, style: { display: 'block' } };
+  const cx = (s + 6) / 2, cy = (s + 6) / 2;
+  if (kind === 'circle') {
+    return (
+      <svg {...common}>
+        <circle cx={cx} cy={cy} r={s / 2} fill={color}
+          stroke="#fff" strokeWidth="1.5" />
+      </svg>
+    );
+  }
+  if (kind === 'square') {
+    return (
+      <svg {...common}>
+        <rect x={cx - s/2} y={cy - s/2} width={s} height={s} rx={2}
+          fill={color} stroke="#fff" strokeWidth="1.5" />
+      </svg>
+    );
+  }
+  if (kind === 'arrow') {
+    // right-pointing triangle
+    const h = s, w = s * 0.9;
+    return (
+      <svg {...common}>
+        <polygon
+          points={`${cx - w/2},${cy - h/2} ${cx + w/2},${cy} ${cx - w/2},${cy + h/2}`}
+          fill={color} stroke="#fff" strokeWidth="1.5" strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+  if (kind === 'chevron') {
+    // Two-stroke chevron pointing right
+    return (
+      <svg {...common}>
+        <polyline
+          points={`${cx - s/3},${cy - s/2}  ${cx + s/3},${cy}  ${cx - s/3},${cy + s/2}`}
+          fill="none" stroke={color} strokeWidth="3"
+          strokeLinecap="round" strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+  if (kind === 'diamond') {
+    return (
+      <svg {...common}>
+        <polygon
+          points={`${cx},${cy - s/2} ${cx + s/2},${cy} ${cx},${cy + s/2} ${cx - s/2},${cy}`}
+          fill={color} stroke="#fff" strokeWidth="1.5" strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UI atoms
+// ─────────────────────────────────────────────────────────────────────────────
+function Slider({ label, value, min, max, step, onChange, format, compact }) {
+  const cls = compact ? ['mini-field', 'mini-field-row', 'mini-field-name', 'mini-field-value']
+                      : ['field', 'field-row', 'field-name', 'field-value'];
+  return (
+    <div className={cls[0]}>
+      <div className={cls[1]}>
+        <div className={cls[2]}>{label}</div>
+        <div className={cls[3]}>{format ? format(value) : value}</div>
+      </div>
+      <input type="range" min={min} max={max} step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+      />
+    </div>
+  );
+}
+
+function Chips({ label, options, value, onChange, compact }) {
+  return (
+    <div className={compact ? 'mini-field' : 'field'}>
+      {label && (
+        <div className={compact ? 'mini-field-row' : 'field-row'}>
+          <div className={compact ? 'mini-field-name' : 'field-name'}>{label}</div>
+        </div>
+      )}
+      <div className={compact ? 'mini-chips' : 'select-row'}>
+        {options.map(opt => (
+          <button key={String(opt.value)}
+            className={compact
+              ? `mini-chip ${value === opt.value ? 'active' : ''}`
+              : `select-chip ${value === opt.value ? 'active' : ''}`}
+            onClick={() => onChange(opt.value)}
+          >{opt.label}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ColorPicker({ label, value, onChange, presets }) {
+  return (
+    <div className="field">
+      <div className="field-row">
+        <div className="field-name">{label}</div>
+        <div className="field-value">{value.toUpperCase()}</div>
+      </div>
+      <div className="color-row">
+        {presets.map(c => (
+          <button key={c}
+            className={`color-swatch ${value.toLowerCase() === c.toLowerCase() ? 'active' : ''}`}
+            style={{ background: c }}
+            onClick={() => onChange(c)} title={c}
+          />
+        ))}
+        <input type="color" value={value} onChange={(e) => onChange(e.target.value)} />
+      </div>
+    </div>
+  );
+}
+
+function Toggle({ label, value, onChange }) {
+  return (
+    <div className="field toggle-row">
+      <div className="field-name">{label}</div>
+      <button className={`toggle ${value ? 'on' : ''}`} onClick={() => onChange(!value)} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SVG string builder (used by both live render and SVG/PNG export)
+// ─────────────────────────────────────────────────────────────────────────────
+function buildScaleSVG({ width, height, background, lineColor, thickness, widths, align, scaleH, vPadTop, count }) {
+  const spacing = count > 1 ? scaleH / (count - 1) : 0;
+  let anchorX;
+  if (align === 'left') anchorX = width * 0.25;
+  else if (align === 'right') anchorX = width * 0.75;
+  else anchorX = width / 2;
+
+  let body = '';
+  body += `<rect width="${width}" height="${height}" fill="${background}" />`;
+  for (let i = 0; i < widths.length; i++) {
+    const { wL, wR } = widths[i];
+    const y = vPadTop + i * spacing;
+    const x1 = anchorX - wL;
+    const x2 = anchorX + wR;
+    body += `<line x1="${x1.toFixed(2)}" x2="${x2.toFixed(2)}" y1="${y.toFixed(2)}" y2="${y.toFixed(2)}" stroke="${lineColor}" stroke-width="${thickness}" />`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${body}</svg>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Canvas: renders scale + attractor handles + hover "virtual" attractor
+// ─────────────────────────────────────────────────────────────────────────────
+function ScaleCanvas({
+  count, minWidth, maxWidth, thickness, heightPx, attractors,
+  align, lineColor, background, falloffFn, showAttractors,
+  selectedId, onSelect, onMove, onAddAt,
+  hoverEnabled, hoverRadius, hoverStrength, hoverSide,
+  onOpenExport, canvasRef,
+}) {
+  const wrapperRef = React.useRef(null);
+  React.useImperativeHandle(canvasRef, () => wrapperRef.current, []);
+
+  const [rect, setRect] = React.useState({ w: 800, h: 580 });
+  const [dragging, setDragging] = React.useState(null);
+  const [hover, setHover] = React.useState(null); // { p } or null
+
+  React.useEffect(() => {
+    const measure = () => {
+      if (!wrapperRef.current) return;
+      const r = wrapperRef.current.getBoundingClientRect();
+      setRect({ w: r.width, h: r.height });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (wrapperRef.current) ro.observe(wrapperRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  // Vertical extent
+  const scaleH = Math.min(rect.h * 0.92, heightPx);
+  const vPadTop = (rect.h - scaleH) / 2;
+
+  // Combine attractors + hover (if any) for width computation
+  const liveAttractors = React.useMemo(() => {
+    if (hoverEnabled && hover) {
+      return [...attractors, {
+        id: 'hover', p: hover.p, r: hoverRadius, strength: hoverStrength, side: hoverSide
+      }];
+    }
+    return attractors;
+  }, [attractors, hover, hoverEnabled, hoverRadius, hoverStrength, hoverSide]);
+
+  const widths = React.useMemo(
+    () => computeLineWidths(count, liveAttractors, minWidth, maxWidth, falloffFn),
+    [count, liveAttractors, minWidth, maxWidth, falloffFn]
+  );
+
+  // Horizontal anchor
+  let anchorX;
+  if (align === 'left') anchorX = rect.w * 0.25;
+  else if (align === 'right') anchorX = rect.w * 0.75;
+  else anchorX = rect.w / 2;
+
+  // Drag
+  const onDragMove = (e) => {
+    if (dragging == null) return;
+    const r = wrapperRef.current.getBoundingClientRect();
+    const y = e.clientY - r.top - vPadTop;
+    const p = Math.max(0, Math.min(1, y / scaleH));
+    onMove(dragging, { p });
+  };
+  const onDragUp = () => setDragging(null);
+  React.useEffect(() => {
+    if (dragging == null) return;
+    window.addEventListener('mousemove', onDragMove);
+    window.addEventListener('mouseup', onDragUp);
+    return () => {
+      window.removeEventListener('mousemove', onDragMove);
+      window.removeEventListener('mouseup', onDragUp);
+    };
+  }, [dragging]);
+
+  // Hover tracking
+  const onMouseMove = (e) => {
+    if (!hoverEnabled) return;
+    const r = wrapperRef.current.getBoundingClientRect();
+    const y = e.clientY - r.top - vPadTop;
+    const p = Math.max(0, Math.min(1, y / scaleH));
+    setHover({ p });
+  };
+  const onMouseLeave = () => setHover(null);
+
+  const onDblClick = (e) => {
+    const r = wrapperRef.current.getBoundingClientRect();
+    const y = e.clientY - r.top - vPadTop;
+    const p = Math.max(0, Math.min(1, y / scaleH));
+    onAddAt(p);
+  };
+
+  // Background darkness check for text
+  const bgIsDark = isDark(background);
+
+  return (
+    <div
+      ref={wrapperRef}
+      className={`canvas-frame ${bgIsDark ? 'dark' : ''}`}
+      style={{ background }}
+      onDoubleClick={onDblClick}
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
+    >
+      <button className="export-btn" onClick={onOpenExport}>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M8 2v8m0 0l-3-3m3 3l3-3M3 13h10" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Export
+      </button>
+
+      <svg className="scale-svg" width={rect.w} height={rect.h}>
+        {widths.map((w, i) => {
+          const spacing = count > 1 ? scaleH / (count - 1) : 0;
+          const y = vPadTop + i * spacing;
+          const x1 = anchorX - w.wL;
+          const x2 = anchorX + w.wR;
+          return (
+            <line key={i}
+              x1={x1} x2={x2} y1={y} y2={y}
+              stroke={lineColor} strokeWidth={thickness}
+            />
+          );
+        })}
+      </svg>
+
+      {showAttractors && attractors.map((a, i) => {
+        const x = anchorX;
+        const y = vPadTop + a.p * scaleH;
+        const isSelected = a.id === selectedId;
+        const isDragging = a.id === dragging;
+        return (
+          <React.Fragment key={a.id}>
+            {(isSelected || isDragging) && (
+              <div style={{
+                position: 'absolute',
+                left: x, top: y,
+                width: 2, height: a.r * scaleH * 2,
+                background: `linear-gradient(to bottom, transparent, ${a.color}66 40%, ${a.color}99 50%, ${a.color}66 60%, transparent)`,
+                transform: 'translate(-50%, -50%)',
+                pointerEvents: 'none',
+              }}/>
+            )}
+            <div
+              className={`attractor ${isDragging ? 'dragging' : ''}`}
+              style={{ left: x, top: y }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                onSelect(a.id);
+                setDragging(a.id);
+              }}
+              title={`Attractor ${i + 1}`}
+            >
+              <HandleShape kind={a.shape} color={a.color} size={isSelected ? 16 : 13} />
+            </div>
+            {isSelected && (
+              <div className="attractor-label" style={{ left: x, top: y }}>
+                #{i + 1} · p={a.p.toFixed(2)} · r={a.r.toFixed(2)} · {a.side}
+              </div>
+            )}
+          </React.Fragment>
+        );
+      })}
+
+      <div className="hint">
+        {hoverEnabled ? 'Cursor attracts lines · ' : ''}
+        {showAttractors ? 'Drag handles · double-click to add' : 'Handles hidden'}
+      </div>
+    </div>
+  );
+}
+
+function isDark(hex) {
+  const h = hex.replace('#', '');
+  if (h.length !== 6 && h.length !== 3) return false;
+  const r = parseInt(h.length === 3 ? h[0] + h[0] : h.slice(0, 2), 16);
+  const g = parseInt(h.length === 3 ? h[1] + h[1] : h.slice(2, 4), 16);
+  const b = parseInt(h.length === 3 ? h[2] + h[2] : h.slice(4, 6), 16);
+  // Relative luminance
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum < 0.5;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Export Modal
+// ─────────────────────────────────────────────────────────────────────────────
+function ExportModal({
+  onClose, count, minWidth, maxWidth, thickness, heightPx,
+  align, lineColor, background, falloffName, attractors,
+}) {
+  const [tab, setTab] = React.useState('image'); // image | svg | json
+  const [format, setFormat] = React.useState('png'); // png | jpeg
+  const [quality, setQuality] = React.useState(0.92);
+  const [scale, setScale] = React.useState(2); // multiplier
+  const [preset, setPreset] = React.useState('1920x1080');
+  const [customW, setCustomW] = React.useState(1920);
+  const [customH, setCustomH] = React.useState(1080);
+
+  const presets = [
+    { id: '1920x1080', label: '1920 × 1080',  w: 1920, h: 1080 },
+    { id: '2560x1440', label: '2560 × 1440',  w: 2560, h: 1440 },
+    { id: '3840x2160', label: '4K (3840×2160)', w: 3840, h: 2160 },
+    { id: '1080x1080', label: 'Square 1080', w: 1080, h: 1080 },
+    { id: '1080x1920', label: 'Vertical 9:16', w: 1080, h: 1920 },
+    { id: '1200x630',  label: 'OG Image',      w: 1200, h: 630  },
+    { id: 'custom',    label: 'Custom',        w: 0,    h: 0    },
+  ];
+
+  const resolvedDims = (() => {
+    const p = presets.find(x => x.id === preset);
+    if (preset === 'custom') return { w: customW, h: customH };
+    return { w: p.w, h: p.h };
+  })();
+
+  // Build widths once based on export dimensions (so the scale fits the frame)
+  const buildWidthsForExport = (W, H) => {
+    const falloffFn = FALLOFFS[falloffName];
+    const scaleH = H * 0.92;
+    const vPadTop = (H - scaleH) / 2;
+    const widths = computeLineWidths(count, attractors, minWidth, maxWidth, falloffFn);
+    return { widths, scaleH, vPadTop };
+  };
+
+  const currentSVG = (W, H) => {
+    const { widths, scaleH, vPadTop } = buildWidthsForExport(W, H);
+    return buildScaleSVG({
+      width: W, height: H, background, lineColor, thickness, widths,
+      align, scaleH, vPadTop, count
+    });
+  };
+
+  const doDownloadImage = async () => {
+    const { w: W, h: H } = resolvedDims;
+    const svgStr = currentSVG(W, H);
+    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = W * scale;
+    canvas.height = H * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    if (format === 'jpeg') {
+      ctx.fillStyle = background;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+
+    const mime = format === 'jpeg' ? 'image/jpeg' : 'image/png';
+    const outUrl = canvas.toDataURL(mime, format === 'jpeg' ? quality : undefined);
+    const a = document.createElement('a');
+    a.href = outUrl;
+    a.download = `line-scale-${W}x${H}@${scale}x.${format === 'jpeg' ? 'jpg' : 'png'}`;
+    a.click();
+  };
+
+  const doDownloadSVG = () => {
+    const { w: W, h: H } = resolvedDims;
+    const svgStr = currentSVG(W, H);
+    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `line-scale-${W}x${H}.svg`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const configJSON = JSON.stringify({
+    count, minWidth, maxWidth, thickness, height: heightPx,
+    align, lineColor, background, falloff: falloffName,
+    attractors: attractors.map(a => ({
+      p: a.p, r: a.r, strength: a.strength, side: a.side,
+      shape: a.shape, color: a.color
+    })),
+  }, null, 2);
+
+  const doCopyJSON = () => navigator.clipboard.writeText(configJSON);
+  const doDownloadJSON = () => {
+    const blob = new Blob([configJSON], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'line-scale-config.json'; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  // Close on Esc / overlay click
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal">
+        <div className="modal-head">
+          <h3 className="modal-title">Export</h3>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-tabs">
+          <button className={`modal-tab ${tab === 'image' ? 'active' : ''}`} onClick={() => setTab('image')}>Image</button>
+          <button className={`modal-tab ${tab === 'svg' ? 'active' : ''}`} onClick={() => setTab('svg')}>SVG</button>
+          <button className={`modal-tab ${tab === 'json' ? 'active' : ''}`} onClick={() => setTab('json')}>JSON</button>
+        </div>
+
+        <div className="modal-body">
+          {tab === 'image' && (
+            <>
+              <div className="export-row full">
+                <div>
+                  <div className="export-field-label">FORMAT</div>
+                  <div className="preset-row">
+                    {['png', 'jpeg'].map(f => (
+                      <button key={f}
+                        className={`select-chip ${format === f ? 'active' : ''}`}
+                        onClick={() => setFormat(f)}
+                      >{f.toUpperCase()}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="export-row full">
+                <div>
+                  <div className="export-field-label">RESOLUTION PRESET</div>
+                  <div className="preset-row">
+                    {presets.map(p => (
+                      <button key={p.id}
+                        className={`select-chip ${preset === p.id ? 'active' : ''}`}
+                        onClick={() => setPreset(p.id)}
+                      >{p.label}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {preset === 'custom' && (
+                <div className="export-row">
+                  <div>
+                    <div className="export-field-label">WIDTH (PX)</div>
+                    <input className="number-input" type="number"
+                      value={customW} min={50} max={8000}
+                      onChange={(e) => setCustomW(parseInt(e.target.value) || 0)} />
+                  </div>
+                  <div>
+                    <div className="export-field-label">HEIGHT (PX)</div>
+                    <input className="number-input" type="number"
+                      value={customH} min={50} max={8000}
+                      onChange={(e) => setCustomH(parseInt(e.target.value) || 0)} />
+                  </div>
+                </div>
+              )}
+
+              <div className="export-row">
+                <div>
+                  <div className="export-field-label">PIXEL DENSITY</div>
+                  <div className="preset-row">
+                    {[1, 2, 3].map(s => (
+                      <button key={s}
+                        className={`select-chip ${scale === s ? 'active' : ''}`}
+                        onClick={() => setScale(s)}
+                      >{s}×</button>
+                    ))}
+                  </div>
+                </div>
+                {format === 'jpeg' && (
+                  <div>
+                    <div className="export-field-label">JPEG QUALITY · {Math.round(quality * 100)}%</div>
+                    <input type="range" min={0.4} max={1} step={0.01}
+                      value={quality}
+                      onChange={(e) => setQuality(parseFloat(e.target.value))}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="dims-display">
+                Output: {resolvedDims.w}×{resolvedDims.h} · Rendered at {resolvedDims.w * scale}×{resolvedDims.h * scale}
+                {format === 'jpeg' && ` · quality ${Math.round(quality * 100)}%`}
+              </div>
+            </>
+          )}
+
+          {tab === 'svg' && (
+            <>
+              <div className="export-row full">
+                <div>
+                  <div className="export-field-label">RESOLUTION PRESET (SVG is vector — this sets viewBox)</div>
+                  <div className="preset-row">
+                    {presets.map(p => (
+                      <button key={p.id}
+                        className={`select-chip ${preset === p.id ? 'active' : ''}`}
+                        onClick={() => setPreset(p.id)}
+                      >{p.label}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {preset === 'custom' && (
+                <div className="export-row">
+                  <div>
+                    <div className="export-field-label">WIDTH (PX)</div>
+                    <input className="number-input" type="number"
+                      value={customW} min={50} max={8000}
+                      onChange={(e) => setCustomW(parseInt(e.target.value) || 0)} />
+                  </div>
+                  <div>
+                    <div className="export-field-label">HEIGHT (PX)</div>
+                    <input className="number-input" type="number"
+                      value={customH} min={50} max={8000}
+                      onChange={(e) => setCustomH(parseInt(e.target.value) || 0)} />
+                  </div>
+                </div>
+              )}
+              <div className="dims-display">
+                Infinitely scalable · viewBox 0 0 {resolvedDims.w} {resolvedDims.h} · {count} line elements
+              </div>
+            </>
+          )}
+
+          {tab === 'json' && (
+            <>
+              <div className="export-field-label">CONFIG</div>
+              <pre style={{
+                background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 6, padding: 14, fontSize: 11, lineHeight: 1.5,
+                color: 'var(--text-dim)', fontFamily: 'ui-monospace, monospace',
+                maxHeight: 360, overflow: 'auto', margin: 0,
+              }}>{configJSON}</pre>
+            </>
+          )}
+        </div>
+
+        <div className="modal-foot">
+          <div className="modal-hint">
+            {tab === 'image' && 'Rendered via SVG → canvas at selected density'}
+            {tab === 'svg' && 'True vector — scales cleanly to any size'}
+            {tab === 'json' && 'Re-import this config later to restore exact state'}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {tab === 'image' && <button className="btn primary" onClick={doDownloadImage}>Download {format.toUpperCase()}</button>}
+            {tab === 'svg' && <button className="btn primary" onClick={doDownloadSVG}>Download SVG</button>}
+            {tab === 'json' && (
+              <>
+                <button className="btn" onClick={doCopyJSON}>Copy</button>
+                <button className="btn primary" onClick={doDownloadJSON}>Download JSON</button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// App
+// ─────────────────────────────────────────────────────────────────────────────
+const COLOR_PRESETS_LINE = ['#6B6560', '#1A1A1A', '#FAF8F5', '#9B4DAF', '#C45D35', '#3D5A3F'];
+const COLOR_PRESETS_BG   = ['#FAF8F5', '#F5F3F0', '#EDE8E0', '#0a0a0a', '#1A1A1A', '#1C1225'];
+const HANDLE_COLORS      = ['#C45D35', '#9B4DAF', '#3D5A3F', '#1A1A1A', '#FAF8F5', '#E4A11B'];
+const SHAPES = [
+  { value: 'circle',  label: 'Circle'  },
+  { value: 'square',  label: 'Square'  },
+  { value: 'diamond', label: 'Diamond' },
+  { value: 'arrow',   label: 'Arrow'   },
+  { value: 'chevron', label: 'Chevron' },
+];
+
+let _idSeq = 1;
+const newId = () => _idSeq++;
+
+function defaultAttractor(p = 0.5) {
+  return {
+    id: newId(), p, r: 0.12, strength: 1,
+    side: 'both', shape: 'circle', color: '#C45D35',
+  };
+}
+
+function App() {
+  const [count, setCount]         = React.useState(60);
+  const [minWidth, setMinWidth]   = React.useState(80);
+  const [maxWidth, setMaxWidth]   = React.useState(340);
+  const [thickness, setThickness] = React.useState(2);
+  const [heightPx, setHeightPx]   = React.useState(720);
+  const [align, setAlign]         = React.useState('center');
+  const [lineColor, setLineColor] = React.useState('#6B6560');
+  const [background, setBackground] = React.useState('#FAF8F5');
+  const [falloff, setFalloff]     = React.useState('smoothstep');
+  const [showAttractors, setShowAttractors] = React.useState(true);
+
+  // Hover interaction
+  const [hoverEnabled, setHoverEnabled]   = React.useState(true);
+  const [hoverRadius, setHoverRadius]     = React.useState(0.08);
+  const [hoverStrength, setHoverStrength] = React.useState(0.6);
+  const [hoverSide, setHoverSide]         = React.useState('right');
+
+  const [attractors, setAttractors] = React.useState(() => [
+    { ...defaultAttractor(0.05), r: 0.08, color: '#C45D35', side: 'right', shape: 'arrow' },
+  ]);
+  const [selectedId, setSelectedId] = React.useState(1);
+
+  // Export modal
+  const [exportOpen, setExportOpen] = React.useState(false);
+
+  const falloffFn = FALLOFFS[falloff];
+
+  const addAttractor = (p = 0.5) => {
+    const a = defaultAttractor(p);
+    setAttractors(prev => [...prev, a]);
+    setSelectedId(a.id);
+  };
+  const removeAttractor = (id) => {
+    setAttractors(prev => prev.filter(a => a.id !== id));
+    if (selectedId === id) setSelectedId(null);
+  };
+  const updateAttractor = (id, patch) => {
+    setAttractors(prev => prev.map(a => a.id === id ? { ...a, ...patch } : a));
+  };
+
+  const resetAll = () => {
+    setAttractors([{ ...defaultAttractor(0.05), r: 0.08, color: '#C45D35', side: 'right', shape: 'arrow' }]);
+  };
+
+  return (
+    <div className="app">
+      <div className="stage">
+        <div className="stage-header">
+          <h1 className="stage-title">Line scale</h1>
+          <div className="stage-meta">
+            <strong>lines</strong> {count} · <strong>attractors</strong> {attractors.length}
+            {hoverEnabled && <> · <strong>hover</strong> on</>}
+          </div>
+        </div>
+        <ScaleCanvas
+          count={count} minWidth={minWidth} maxWidth={maxWidth}
+          thickness={thickness} heightPx={heightPx}
+          attractors={attractors}
+          align={align} lineColor={lineColor} background={background}
+          falloffFn={falloffFn}
+          showAttractors={showAttractors}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onMove={updateAttractor}
+          onAddAt={addAttractor}
+          hoverEnabled={hoverEnabled}
+          hoverRadius={hoverRadius}
+          hoverStrength={hoverStrength}
+          hoverSide={hoverSide}
+          onOpenExport={() => setExportOpen(true)}
+        />
+        <div className="stage-actions">
+          <button className="btn primary" onClick={() => addAttractor(Math.random())}>+ Add attractor</button>
+          <button className="btn" onClick={() => setShowAttractors(v => !v)}>
+            {showAttractors ? 'Hide handles' : 'Show handles'}
+          </button>
+          <button className="btn" onClick={resetAll}>Reset</button>
+        </div>
+      </div>
+
+      <aside className="panel">
+        <div className="panel-brand">
+          <div className="panel-brand-dot" />
+          <div className="panel-brand-name">Line Scale · Playground</div>
+        </div>
+        <h2 className="panel-title">Line scale</h2>
+        <p className="panel-sub">
+          A stack of lines whose widths are driven by attractors. Enable hover to let the cursor act as a soft attractor — fixed attractors pull more strongly and stay put.
+        </p>
+
+        {/* Structure */}
+        <div className="section">
+          <div className="section-label">Structure</div>
+          <Slider label="Divisions" value={count} min={6} max={240} step={1}
+            onChange={setCount} format={(v) => `${v} lines`} />
+          <Slider label="Total height" value={heightPx} min={200} max={1200} step={10}
+            onChange={setHeightPx} format={(v) => `${v}px`} />
+          <Slider label="Line thickness" value={thickness} min={0.5} max={10} step={0.25}
+            onChange={setThickness} format={(v) => `${v}px`} />
+          <Chips label="Align"
+            options={[
+              { value: 'left', label: 'Left' },
+              { value: 'center', label: 'Center' },
+              { value: 'right', label: 'Right' },
+            ]}
+            value={align} onChange={setAlign}
+          />
+        </div>
+
+        {/* Width range */}
+        <div className="section">
+          <div className="section-label">Width range</div>
+          <Slider label="Min width (baseline)" value={minWidth} min={0} max={600} step={2}
+            onChange={(v) => setMinWidth(Math.min(v, maxWidth))}
+            format={(v) => `${v}px`} />
+          <Slider label="Max width (at attractor)" value={maxWidth} min={10} max={900} step={2}
+            onChange={(v) => setMaxWidth(Math.max(v, minWidth))}
+            format={(v) => `${v}px`} />
+          <div className="field">
+            <div className="field-row"><div className="field-name">Falloff curve</div></div>
+            <select className="easing-select" value={falloff} onChange={(e) => setFalloff(e.target.value)}>
+              {FALLOFF_NAMES.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Hover */}
+        <div className="section">
+          <div className="section-label">Cursor attraction</div>
+          <Toggle label="Follow cursor" value={hoverEnabled} onChange={setHoverEnabled} />
+          {hoverEnabled && (
+            <>
+              <Slider label="Hover radius" value={hoverRadius} min={0.02} max={0.4} step={0.005}
+                onChange={setHoverRadius} format={(v) => v.toFixed(3)} />
+              <Slider label="Hover strength" value={hoverStrength} min={0} max={1} step={0.01}
+                onChange={setHoverStrength} format={(v) => v.toFixed(2)} />
+              <Chips label="Hover side"
+                options={[
+                  { value: 'left', label: 'Left' },
+                  { value: 'both', label: 'Both' },
+                  { value: 'right', label: 'Right' },
+                ]}
+                value={hoverSide} onChange={setHoverSide}
+              />
+            </>
+          )}
+        </div>
+
+        {/* Attractors */}
+        <div className="section">
+          <div className="section-label">Attractors · {attractors.length}</div>
+          <Toggle label="Show handles" value={showAttractors} onChange={setShowAttractors} />
+          <div className="attractor-list" style={{ marginTop: 10 }}>
+            {attractors.map((a, i) => (
+              <div
+                key={a.id}
+                className={`attractor-card ${selectedId === a.id ? 'selected' : ''}`}
+                onClick={() => setSelectedId(a.id)}
+              >
+                <div className="attractor-card-head">
+                  <div className="attractor-card-title">
+                    <span className="idx-box" style={{ background: a.color }}>{i + 1}</span>
+                    Attractor
+                  </div>
+                  <button
+                    className="remove-btn"
+                    onClick={(e) => { e.stopPropagation(); removeAttractor(a.id); }}
+                    title="Remove"
+                  >✕</button>
+                </div>
+                <Slider compact label="Position" value={a.p} min={0} max={1} step={0.005}
+                  onChange={(v) => updateAttractor(a.id, { p: v })}
+                  format={(v) => v.toFixed(3)}
+                />
+                <Slider compact label="Radius" value={a.r} min={0.01} max={0.8} step={0.005}
+                  onChange={(v) => updateAttractor(a.id, { r: v })}
+                  format={(v) => v.toFixed(3)}
+                />
+                <Slider compact label="Strength" value={a.strength} min={0} max={1} step={0.01}
+                  onChange={(v) => updateAttractor(a.id, { strength: v })}
+                  format={(v) => v.toFixed(2)}
+                />
+                <Chips compact label="Affects"
+                  options={[
+                    { value: 'left',  label: '◀ Left' },
+                    { value: 'both',  label: '◀▶ Both' },
+                    { value: 'right', label: 'Right ▶' },
+                  ]}
+                  value={a.side}
+                  onChange={(v) => updateAttractor(a.id, { side: v })}
+                />
+                <Chips compact label="Shape"
+                  options={SHAPES.map(s => ({ value: s.value, label: s.label.slice(0, 3) }))}
+                  value={a.shape}
+                  onChange={(v) => updateAttractor(a.id, { shape: v })}
+                />
+                <div className="mini-field">
+                  <div className="mini-field-row">
+                    <div className="mini-field-name">Color</div>
+                    <div className="mini-field-value">{a.color.toUpperCase()}</div>
+                  </div>
+                  <div className="color-row" style={{ gap: 6 }}>
+                    {HANDLE_COLORS.map(c => (
+                      <button key={c}
+                        className={`color-swatch ${a.color.toLowerCase() === c.toLowerCase() ? 'active' : ''}`}
+                        style={{ background: c, width: 22, height: 22 }}
+                        onClick={(e) => { e.stopPropagation(); updateAttractor(a.id, { color: c }); }}
+                        title={c}
+                      />
+                    ))}
+                    <input type="color" value={a.color}
+                      style={{ width: 22, height: 22 }}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => updateAttractor(a.id, { color: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <button className="add-btn" onClick={() => addAttractor(Math.random())}>+ Add attractor</button>
+          </div>
+        </div>
+
+        {/* Color */}
+        <div className="section">
+          <div className="section-label">Color</div>
+          <ColorPicker label="Line" value={lineColor} onChange={setLineColor} presets={COLOR_PRESETS_LINE} />
+          <ColorPicker label="Background" value={background} onChange={setBackground} presets={COLOR_PRESETS_BG} />
+        </div>
+
+        <div className="footer-note">
+          Each line has independent left / right halves. Per attractor, choose which side to affect. Fixed attractors combine with the optional cursor attractor — the strongest wins per side.
+        </div>
+      </aside>
+
+      {exportOpen && (
+        <ExportModal
+          onClose={() => setExportOpen(false)}
+          count={count} minWidth={minWidth} maxWidth={maxWidth}
+          thickness={thickness} heightPx={heightPx}
+          align={align} lineColor={lineColor} background={background}
+          falloffName={falloff} attractors={attractors}
+        />
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
