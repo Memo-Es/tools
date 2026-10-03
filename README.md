@@ -32,7 +32,7 @@ That builds the whole site into `dist/` the way it is deployed. To work on one t
 - `scripts/build.mjs` builds invoices with Vite, copies the other tools as they are, puts the design system's stylesheet at `/design-system/dist/`, and adds the list of tools from `hub/` as the home page.
 - Every playground links `design-system/dist/index.css` last in its `<head>` and has `class="mt-play"` on `<html>`. That switches on the playground layer in the design system, which restyles the control panel all the playgrounds share (`.panel`, `.section`, `.field`, `.select-chip`, `.btn` and the rest) without touching their markup or their artwork.
 - npm workspaces link `design-system/` into invoices, so invoices always uses the design system in this repo rather than a published copy.
-- `vercel.json` tells Vercel to run that build and serve `dist/`, with trailing slashes on so each tool's relative paths resolve.
+- `vercel.json` tells Vercel to run that build and serve `dist/`, with trailing slashes on so each tool's relative paths resolve. It also sets no framework, because Vercel otherwise sees Vite in `invoices/` and builds that folder alone. The project's Root Directory must stay empty for the same reason.
 - Color wheel, point cloud, typography, liquid glass, line scale and animated orb came in with their full history. Invoices came in as a single snapshot, because its earlier history has my own details in the sample data.
 
 ## Limits
