@@ -3,8 +3,8 @@
 Vite, React and TypeScript, no backend. Every commit is authored by Memo:
 
 ```
-git config user.name  "Guillermo Esparza"
-git config user.email "49539954+Memo-Es@users.noreply.github.com"
+git config user.name  "Memo Esparza"
+git config user.email "hola@memoesparza.com"
 ```
 
 ## Writing on GitHub

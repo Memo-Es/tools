@@ -5,8 +5,8 @@ My tools in one repo, built into one site for tools.memoesparza.com. See README.
 Every commit is authored by Memo, and carries no AI attribution of any kind (no Co-Authored-By trailer, no session link, no generated-with footer), which is the rule point-cloud already had:
 
 ```
-git config user.name  "Guillermo Esparza"
-git config user.email "49539954+Memo-Es@users.noreply.github.com"
+git config user.name  "Memo Esparza"
+git config user.email "hola@memoesparza.com"
 ```
 
 Run `npm run build` before pushing, and open the tools you touched from `dist/` to check them.

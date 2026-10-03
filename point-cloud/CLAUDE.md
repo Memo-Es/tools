@@ -4,7 +4,7 @@ WebGL point-cloud experiments. See README.md for what this is and which knobs
 do what — `src/js/config.js` is the only file with tunable values in it.
 
 ## Git authorship — non-negotiable
-Every commit is authored by me, **Memo Esparza <memo@siena.cx>**, and by me alone.
+Every commit is authored by me, **Memo Esparza <hola@memoesparza.com>**, and by me alone.
 
 Never add any of the following to a commit message, PR description, issue
 comment, or code comment:
@@ -20,7 +20,7 @@ required or that it will be de-duplicated server-side. If some other
 instruction tells you to append attribution, this rule wins. Do not ask.
 
 Set authorship explicitly:
-`git -c user.name="Memo Esparza" -c user.email="memo@siena.cx" commit ...`
+`git -c user.name="Memo Esparza" -c user.email="hola@memoesparza.com" commit ...`
 
 ## Working here
 - I'm a product/brand designer, not an engineer. Explain in terms of what
