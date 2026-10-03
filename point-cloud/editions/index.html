@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transform — Point Cloud Playground</title>
+<meta name="description" content="An abstract point cloud that transforms into a shape or your own text on a trigger, inside a rotating 3D band of type.">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0a0a'/%3E%3Cg fill='%23FAF8F5'%3E%3Ccircle cx='9' cy='12' r='2'/%3E%3Ccircle cx='17' cy='8' r='1.4'/%3E%3Ccircle cx='23' cy='15' r='2.4'/%3E%3Ccircle cx='12' cy='21' r='1.8'/%3E%3Ccircle cx='21' cy='24' r='1.2'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="./src/css/playground.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div class="app">
+
+  <main class="stage">
+    <div class="stage-header">
+      <h1 class="stage-title">Preview</h1>
+      <button class="export-btn" id="open-export" type="button">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+          <path d="M8 1v9M4.5 6.5 8 10l3.5-3.5M2 11v3h12v-3"/>
+        </svg>
+        Export
+      </button>
+      <div class="stage-meta">
+        <strong id="meta-points">—</strong> points · <strong id="meta-fps">—</strong> fps · <strong id="meta-state">cloud</strong>
+      </div>
+    </div>
+
+    <div class="canvas-frame">
+      <canvas id="gl"></canvas>
+    </div>
+
+    <div class="stage-actions">
+      <button class="btn primary" id="act-transform" type="button"><span class="dot"></span>Transform</button>
+      <button class="btn" id="act-random" type="button">Randomise</button>
+      <button class="btn" id="act-pause" type="button" aria-pressed="false">Pause</button>
+      <div class="progress-rail" aria-hidden="true"><div class="progress-fill" id="morph-fill"></div></div>
+    </div>
+  </main>
+
+  <aside class="panel">
+    <div class="panel-brand">
+      <div class="panel-brand-dot"></div>
+      <div class="panel-brand-name">Transform · Playground</div>
+    </div>
+    <h2 class="panel-title">Transform</h2>
+    <p class="panel-sub">
+      The cloud sits loose until you fire it. Pick what it becomes, then hit
+      Transform. Drag the stage to orbit.
+    </p>
+
+    <!-- ── Transform ──────────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-label">Transform</div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Becomes</span></div>
+        <div class="select-row" id="target-row" role="group" aria-label="Target"></div>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Cloud text</span></div>
+        <textarea class="text-input" id="c-cloudtext" rows="1" spellcheck="false">EVERYWHERE</textarea>
+        <p class="field-note">What the points spell when the target is Text. Short strings only — long ones sample thin.</p>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Speed</span><span class="field-value" id="v-morph"></span></div>
+        <input type="range" id="c-morph" min="0.2" max="5" step="0.05">
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Scatter</span><span class="field-value" id="v-scatter"></span></div>
+        <input type="range" id="c-scatter" min="0" max="12" step="0.1">
+        <p class="field-note">How far points fly out at the midpoint of the change.</p>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Trail</span><span class="field-value" id="v-stagger"></span></div>
+        <input type="range" id="c-stagger" min="0" max="0.92" step="0.01">
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Text size</span><span class="field-value" id="v-tsize"></span></div>
+        <input type="range" id="c-tsize" min="0.2" max="2" step="0.02">
+        <p class="field-note">The word is fitted inside a box on both axes, so it can't run off frame. This scales that fit.</p>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Text depth</span><span class="field-value" id="v-tdepth"></span></div>
+        <input type="range" id="c-tdepth" min="0" max="2" step="0.02">
+        <p class="field-note">Extrudes the Text target into a slab, so it has a front and a back to turn between.</p>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Tilt motion</span><span class="field-value" id="v-tilta"></span></div>
+        <input type="range" id="c-tilta" min="0" max="0.7" step="0.01">
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Tilt speed</span><span class="field-value" id="v-tilts"></span></div>
+        <input type="range" id="c-tilts" min="0" max="1.5" step="0.01">
+        <p class="field-note">Rocks the result only — the band holds still, which is what makes the contrast read.</p>
+      </div>
+    </div>
+
+    <!-- ── Band ───────────────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-label">Text band</div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Show band</span></div>
+        <div class="select-row" id="bandon-row" role="group" aria-label="Show band"></div>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Band text</span></div>
+        <textarea class="text-input" id="c-bandtext" rows="1" spellcheck="false">EVERYWHERE</textarea>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Typeface</span><span class="field-value" id="v-font">built-in</span></div>
+        <label class="file-btn" for="c-font">Upload a font file
+          <input type="file" id="c-font" accept=".ttf,.otf,.woff,.woff2,font/*" hidden>
+        </label>
+        <p class="field-note">.otf, .ttf, .woff or .woff2. Stays in your browser — nothing is uploaded anywhere.</p>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Diameter</span><span class="field-value" id="v-bandd"></span></div>
+        <input type="range" id="c-bandd" min="3" max="26" step="0.2">
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Height</span><span class="field-value" id="v-bandh"></span></div>
+        <input type="range" id="c-bandh" min="0.4" max="7" step="0.05">
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Repeats</span><span class="field-value" id="v-bandr"></span></div>
+        <div class="select-row" id="bandauto-row" role="group" aria-label="Repeat mode" style="margin-bottom:10px"></div>
+        <input type="range" id="c-bandr" min="1" max="24" step="1">
+        <p class="field-note" id="note-bandr">Auto derives the count from the circumference, so letters keep their proportions as the diameter changes.</p>
+      </div>
+      <div class="field" id="lettersize-field">
+        <div class="field-row"><span class="field-name">Letter size</span><span class="field-value" id="v-bandls"></span></div>
+        <input type="range" id="c-bandls" min="0.3" max="3" step="0.02">
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Tilt</span><span class="field-value" id="v-bandt"></span></div>
+        <input type="range" id="c-bandt" min="-90" max="0" step="1">
+        <p class="field-note">0° is edge-on — a wide flat sweep. −90° points the axis at you and flattens it to a circle.</p>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Spin</span><span class="field-value" id="v-bands"></span></div>
+        <input type="range" id="c-bands" min="-0.8" max="0.8" step="0.01">
+      </div>
+    </div>
+
+    <!-- ── Band treatment ─────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-label">Band treatment</div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Effect</span></div>
+        <div class="select-row" id="effect-row" role="group" aria-label="Effect"></div>
+        <p class="field-note">Refract samples the cloud behind the letters and bends it — the type becomes glass.</p>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Strength</span><span class="field-value" id="v-bandfx"></span></div>
+        <input type="range" id="c-bandfx" min="0" max="2" step="0.02">
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Tint</span></div>
+        <div class="color-row"><input type="color" id="c-bandcol" aria-label="Band tint"></div>
+      </div>
+    </div>
+
+    <!-- ── Transformed pose ───────────────────────────────────── -->
+    <div class="section">
+      <div class="section-label">Band when transformed</div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">On transform</span></div>
+        <div class="select-row" id="ontransform-row" role="group" aria-label="On transform"></div>
+        <p class="field-note">Flatten lays the band level and lifts it over the result. Stay holds the rest pose and lets the cloud change underneath.</p>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Diameter</span><span class="field-value" id="v-bandd2"></span></div>
+        <input type="range" id="c-bandd2" min="3" max="26" step="0.2">
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Height</span><span class="field-value" id="v-bandh2"></span></div>
+        <input type="range" id="c-bandh2" min="0.1" max="7" step="0.05">
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Tilt</span><span class="field-value" id="v-bandt2"></span></div>
+        <input type="range" id="c-bandt2" min="-90" max="0" step="1">
+        <p class="field-note">Near 0° lays the ring level — a flat halo over the result.</p>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Lift</span><span class="field-value" id="v-bandlift"></span></div>
+        <input type="range" id="c-bandlift" min="-6" max="8" step="0.1">
+      </div>
+    </div>
+
+    <!-- ── Cloud ──────────────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-label">Cloud</div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Points</span><span class="field-value" id="v-count"></span></div>
+        <input type="range" id="c-count" min="10000" max="220000" step="5000">
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Point size</span><span class="field-value" id="v-size"></span></div>
+        <input type="range" id="c-size" min="0.4" max="7" step="0.1">
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Scale</span><span class="field-value" id="v-scale"></span></div>
+        <input type="range" id="c-scale" min="0.4" max="2" step="0.02">
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Thickness</span><span class="field-value" id="v-thick"></span></div>
+        <input type="range" id="c-thick" min="0" max="1" step="0.01">
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Drift</span><span class="field-value" id="v-drift"></span></div>
+        <input type="range" id="c-drift" min="0" max="1" step="0.01">
+      </div>
+    </div>
+
+    <!-- ── Camera ─────────────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-label">Camera</div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Zoom</span><span class="field-value" id="v-zoom"></span></div>
+        <input type="range" id="c-zoom" min="3" max="30" step="0.1">
+        <p class="field-note">Resting distance. Scrolling the stage moves this too.</p>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Zoom on transform</span><span class="field-value" id="v-zoomon"></span></div>
+        <input type="range" id="c-zoomon" min="3" max="30" step="0.1">
+        <p class="field-note">Where the camera dollies to once the cloud has changed — below Zoom pushes in, above pulls out.</p>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Breathe</span><span class="field-value" id="v-breathe"></span></div>
+        <input type="range" id="c-breathe" min="0" max="4" step="0.05">
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Breathe speed</span><span class="field-value" id="v-breaths"></span></div>
+        <input type="range" id="c-breaths" min="0.02" max="1" step="0.01">
+      </div>
+    </div>
+
+    <!-- ── Interaction ────────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-label">Interaction</div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Cursor force</span><span class="field-value" id="v-force"></span></div>
+        <input type="range" id="c-force" min="0" max="3" step="0.05">
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Cursor radius</span><span class="field-value" id="v-radius"></span></div>
+        <input type="range" id="c-radius" min="0.05" max="1.2" step="0.01">
+      </div>
+    </div>
+
+    <!-- ── Colour ─────────────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-label">Colour</div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Palette</span></div>
+        <div class="color-row" id="palette-row" role="group" aria-label="Palette"></div>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Custom</span></div>
+        <div class="color-row">
+          <input type="color" id="c-col1" aria-label="Colour one">
+          <input type="color" id="c-col2" aria-label="Colour two">
+          <input type="color" id="c-col3" aria-label="Colour three">
+          <input type="color" id="c-bg" aria-label="Background">
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Gradient by</span></div>
+        <div class="select-row" id="colormode-row" role="group" aria-label="Gradient source"></div>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-name">Glow</span><span class="field-value" id="v-glow"></span></div>
+        <input type="range" id="c-glow" min="0.1" max="1.6" step="0.02">
+      </div>
+    </div>
+
+    <p class="footer-note">
+      Sibling of the <a href="../">shape playground</a>. Same controls, one
+      transformation instead of a picker.
+    </p>
+  </aside>
+</div>
+
+<div class="modal-scrim" id="export-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Export">
+    <div class="modal-tabs">
+      <button class="modal-tab active" data-tab="image" type="button">Image</button>
+      <button class="modal-tab" data-tab="code" type="button">Settings</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-pane" data-pane="image">
+        <h3 class="modal-title">Export image</h3>
+        <div class="field">
+          <div class="field-row"><span class="field-name">Format</span></div>
+          <div class="seg" id="fmt-row">
+            <button class="seg-btn active" data-fmt="png" type="button">PNG</button>
+            <button class="seg-btn" data-fmt="jpg" type="button">JPG</button>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-row"><span class="field-name">Scale</span></div>
+          <div class="seg" id="scale-row">
+            <button class="seg-btn active" data-scale="1" type="button">1×</button>
+            <button class="seg-btn" data-scale="2" type="button">2×</button>
+          </div>
+        </div>
+        <p class="field-note">Exports the stage exactly as it looks right now.</p>
+        <button class="big-btn" id="do-export" type="button">Export PNG</button>
+        <button class="secondary-btn" data-close type="button">Cancel</button>
+      </div>
+      <div class="modal-pane" data-pane="code" hidden>
+        <h3 class="modal-title">Settings</h3>
+        <pre class="code-out" id="code-out"></pre>
+        <button class="big-btn" id="do-copy" type="button">Copy</button>
+        <button class="secondary-btn" data-close type="button">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<noscript><p style="padding:40px">This playground needs JavaScript and WebGL.</p></noscript>
+<script type="module" src="./src/js/main.js"></script>
+</body>
+</html>
