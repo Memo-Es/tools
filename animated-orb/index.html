@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Animated Orb · Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:           #0a0a0a;
+  --panel:        #111;
+  --panel-border: rgba(255,255,255,0.08);
+  --text:         #FAF8F5;
+  --text-dim:     rgba(250,248,245,0.55);
+  --text-dimmer:  rgba(250,248,245,0.35);
+  --accent:       #FAF8F5;
+  --r:            6px;
+  --tf:           150ms ease;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: "Inter", system-ui, sans-serif; height: 100vh; overflow: hidden; }
+
+.app { display: grid; grid-template-columns: 1fr 380px; height: 100vh; }
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; height: auto; overflow-y: auto; }
+  .panel { border-left: none !important; border-top: 1px solid var(--panel-border); max-height: none !important; }
+}
+
+/* Stage */
+.stage { padding: 28px 32px 20px; display: flex; flex-direction: column; overflow: hidden; }
+.stage-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 18px; flex-shrink: 0; }
+.stage-title { font-size: 22px; font-weight: 300; letter-spacing: -0.02em; margin: 0; }
+.stage-meta { font-size: 12px; color: var(--text-dimmer); font-variant-numeric: tabular-nums; }
+.stage-meta strong { color: var(--text-dim); font-weight: 500; }
+
+/* Preview */
+.preview-frame { flex: 1; min-height: 0; border: 1px solid var(--panel-border); border-radius: 8px; position: relative; overflow: hidden; isolation: isolate; }
+.orb-texture { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .5; mix-blend-mode: soft-light; pointer-events: none; }
+.orb-goo { position: absolute; inset: 0; will-change: filter; }
+.orb-goo canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.orb-overlay { position: absolute; inset: 0; mix-blend-mode: overlay; pointer-events: none; }
+.orb-grain { position: absolute; inset: -50%; width: 200%; height: 200%; pointer-events: none; mix-blend-mode: overlay; background-size: 180px 180px; animation: gs .6s steps(2) infinite; }
+@keyframes gs { 0% { transform: translate(0,0); } 50% { transform: translate(-6%,4%); } 100% { transform: translate(3%,-5%); } }
+.orb-vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(120% 100% at 50% 50%, transparent 55%, rgba(0,0,0,.55) 100%); }
+
+.export-btn { position: absolute; top: 12px; right: 12px; z-index: 10; background: rgba(10,10,10,.75); color: #fff; border: 1px solid rgba(255,255,255,.15); padding: 8px 14px; font-family: inherit; font-size: 12px; font-weight: 500; border-radius: var(--r); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; backdrop-filter: blur(8px); transition: background var(--tf); }
+.export-btn:hover { background: rgba(20,20,20,.95); }
+
+.stage-actions { display: flex; gap: 8px; margin-top: 16px; flex-shrink: 0; }
+.btn { background: transparent; color: var(--text); border: 1px solid rgba(255,255,255,.12); padding: 9px 16px; font-family: inherit; font-size: 13px; font-weight: 500; border-radius: var(--r); cursor: pointer; transition: background var(--tf), border-color var(--tf); }
+.btn:hover { background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.22); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.btn.primary:hover { background: #fff; color: var(--bg); }
+
+/* Panel */
+.panel { background: var(--panel); border-left: 1px solid var(--panel-border); padding: 28px 24px 36px; overflow-y: auto; max-height: 100vh; position: sticky; top: 0; }
+.panel::-webkit-scrollbar { width: 3px; }
+.panel::-webkit-scrollbar-track { background: transparent; }
+.panel::-webkit-scrollbar-thumb { background: #252525; border-radius: 2px; }
+
+.panel-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.panel-brand-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 2px; }
+.panel-brand-name { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--text-dim); font-weight: 500; }
+.panel-title { font-weight: 300; font-size: 28px; letter-spacing: -0.03em; margin: 0 0 8px; }
+.panel-sub { font-size: 13px; color: var(--text-dim); line-height: 1.5; margin: 0 0 24px; }
+
+.section { margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--panel-border); }
+.section:last-child { border-bottom: none; margin-bottom: 0; }
+.section-label { font-size: 10px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--text-dimmer); margin-bottom: 12px; }
+
+.field { margin-bottom: 14px; }
+.field:last-child { margin-bottom: 0; }
+.field-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 7px; }
+.field-name { font-size: 12px; color: var(--text); font-weight: 500; }
+.field-value { font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; font-family: ui-monospace, monospace; }
+
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 2px; background: rgba(255,255,255,.1); border-radius: 1px; outline: none; cursor: pointer; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: var(--text); border-radius: 50%; cursor: pointer; border: none; transition: transform var(--tf); }
+input[type=range]::-webkit-slider-thumb:active { transform: scale(1.2); }
+input[type=range]::-moz-range-thumb { width: 12px; height: 12px; background: var(--text); border-radius: 50%; cursor: pointer; border: none; }
+
+.color-list { display: flex; flex-direction: column; gap: 8px; }
+.color-entry { display: flex; align-items: center; gap: 8px; background: #0a0a0a; border: 1px solid rgba(255,255,255,.08); border-radius: var(--r); padding: 8px 10px; }
+.swatch { position: relative; width: 26px; height: 26px; border-radius: 5px; border: 1px solid rgba(255,255,255,.16); overflow: hidden; flex-shrink: 0; cursor: pointer; }
+.swatch input[type=color] { position: absolute; inset: -4px; width: calc(100% + 8px); height: calc(100% + 8px); opacity: 0; cursor: pointer; border: none; padding: 0; }
+.color-label { font-size: 12px; color: var(--text-dim); font-family: ui-monospace, monospace; flex: 1; }
+.rm-btn { background: transparent; border: none; color: var(--text-dimmer); cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 4px; line-height: 1; }
+.rm-btn:hover { color: #e05555; background: rgba(196,53,53,.1); }
+
+.add-btn { background: transparent; border: 1px solid rgba(255,255,255,.1); color: var(--text-dimmer); font-family: inherit; font-size: 12px; padding: 9px; border-radius: var(--r); cursor: pointer; width: 100%; margin-top: 8px; transition: color var(--tf), border-color var(--tf); }
+.add-btn:hover { color: var(--text-dim); border-color: rgba(255,255,255,.22); }
+.footer-note { font-size: 11px; color: var(--text-dimmer); line-height: 1.5; margin-top: 20px; }
+.footer-note a { color: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<!-- SVG filter — no CDN, fully inline -->
+<svg width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">
+  <defs>
+    <filter id="goo" color-interpolation-filters="sRGB" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="18" result="blur" id="gooBlur"/>
+      <feColorMatrix in="blur" type="matrix"
+        values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 14 -5.88"
+        result="goo" id="gooMatrix"/>
+      <feGaussianBlur in="goo" stdDeviation="6" result="soft"/>
+      <feComposite in="soft" in2="soft" operator="over"/>
+    </filter>
+  </defs>
+</svg>
+
+<div class="app">
+  <!-- Stage -->
+  <div class="stage">
+    <div class="stage-header">
+      <h1 class="stage-title">Animated Orb</h1>
+      <div class="stage-meta" id="meta">orbs 5 · speed 1.0× · glow 0.90</div>
+    </div>
+
+    <div class="preview-frame" id="preview">
+      <img class="orb-texture" alt="" aria-hidden="true"
+        src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAA00lEQVR42gHIADf/Af788OwBDv4BAP8AAPz+APv7/+Xu+wYEBAHf9v7q9/4GBAMIBQADAQAFAPj6+O/8/QsBksLN5fUQ/P3+DAT1DgLuCvvfBP/zHx84AWCfrfL6FO/kzQH01wD03QD++PwGHBseNAGw2erZ5PDGwqX04cUA+/v7/gX3+wMJChABwuf3BP7vubul5NzP6urt7O33x9fCRUBwAYKlsCce+//83Nfb1t3j+NHU4RQGGkpPXAGwwcHa3MkiKRsDBg33+Qnf2t8UCw0nJiufFm95mfw9JgAAAABJRU5ErkJggg==" />
+      <div class="orb-goo" id="gooLayer">
+        <canvas id="c"></canvas>
+      </div>
+      <div class="orb-overlay" id="overlayEl"></div>
+      <div class="orb-grain" id="grainEl"></div>
+      <div class="orb-vignette"></div>
+      <button class="export-btn" id="exportBtn">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+          <path d="M6.5 1.5v7M4 6l2.5 2.5L9 6M1.5 11h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Export
+      </button>
+    </div>
+
+    <div class="stage-actions">
+      <button class="btn primary" id="addOrbBtn">+ Add orb</button>
+      <button class="btn" id="resetBtn">Reset</button>
+    </div>
+  </div>
+
+  <!-- Panel -->
+  <aside class="panel" id="panel">
+    <div class="panel-brand">
+      <div class="panel-brand-dot"></div>
+      <div class="panel-brand-name">Memo-Es · Playground</div>
+    </div>
+    <h2 class="panel-title">Animated Orb</h2>
+    <p class="panel-sub">Soft glowing blobs fused by a classic goo filter. Adjust colors, motion, and atmosphere — then export a standalone HTML file.</p>
+    <!-- sections injected by JS -->
+  </aside>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const DEFAULTS = {
+  bg:              '#07070b',
+  orbs:            ['#6d5cff','#2f6bff','#00c2c7','#b14bff','#ff5ca8'],
+  blobSize:        0.42,
+  speed:           1.0,
+  gooBlur:         18,
+  gooCutoff:       14,
+  glow:            0.9,
+  grain:           0.06,
+  overlayTint:     '#aab4ff',
+  overlayStrength: 0.35,
+};
+
+const NEW_COLORS = ['#ff7b54','#ffcc5c','#96e6a1','#56cbf9','#e040fb','#ff4081','#64ffda','#ffd460'];
+let _colorIdx = 0;
+let S = JSON.parse(JSON.stringify(DEFAULTS));
+
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const canvas    = document.getElementById('c');
+const ctx       = canvas.getContext('2d');
+const preview   = document.getElementById('preview');
+const gooLayer  = document.getElementById('gooLayer');
+const overlayEl = document.getElementById('overlayEl');
+const grainEl   = document.getElementById('grainEl');
+const panelEl   = document.getElementById('panel');
+const metaEl    = document.getElementById('meta');
+
+// ── Grain tile ────────────────────────────────────────────────────────────────
+function buildGrain() {
+  const s = 90, gc = document.createElement('canvas');
+  gc.width = gc.height = s;
+  const gx = gc.getContext('2d'), img = gx.createImageData(s, s);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = (Math.random() * 255) | 0;
+    img.data[i] = img.data[i+1] = img.data[i+2] = v; img.data[i+3] = 255;
+  }
+  gx.putImageData(img, 0, 0);
+  grainEl.style.backgroundImage = `url(${gc.toDataURL()})`;
+}
+
+// ── Color helper ──────────────────────────────────────────────────────────────
+const _probe = document.createElement('canvas').getContext('2d');
+function toRGB(color) {
+  _probe.fillStyle = '#000'; _probe.fillStyle = color;
+  const s = _probe.fillStyle;
+  if (s[0] === '#') {
+    const h = s.length === 4 ? s.slice(1).split('').map(c=>c+c).join('') : s.slice(1);
+    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+  }
+  const m = s.match(/\d+(\.\d+)?/g);
+  return m ? [+m[0],+m[1],+m[2]] : [120,120,255];
+}
+
+// ── Filter sync ───────────────────────────────────────────────────────────────
+function syncFilter() {
+  document.getElementById('gooBlur').setAttribute('stdDeviation', S.gooBlur);
+  document.getElementById('gooMatrix').setAttribute('values',
+    `1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${S.gooCutoff} ${-(S.gooCutoff * 0.42).toFixed(2)}`);
+}
+
+// ── Apply state → DOM ─────────────────────────────────────────────────────────
+function applyState() {
+  preview.style.background = S.bg;
+  gooLayer.style.filter = 'url(#goo)';
+  overlayEl.style.background = `radial-gradient(120% 120% at 50% 0%, ${S.overlayTint} 0%, transparent 55%)`;
+  overlayEl.style.opacity = S.overlayStrength;
+  grainEl.style.opacity = S.grain;
+  syncFilter();
+  metaEl.innerHTML = `<strong>orbs</strong> ${S.orbs.length} · <strong>speed</strong> ${S.speed.toFixed(1)}× · <strong>glow</strong> ${S.glow.toFixed(2)}`;
+  makeOrbs();
+}
+
+// ── Canvas / orbs ─────────────────────────────────────────────────────────────
+let W = 0, H = 0, DPR = 1;
+let orbs = [];
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const rect = canvas.getBoundingClientRect();
+  W = Math.max(1, rect.width); H = Math.max(1, rect.height);
+  canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+
+function makeOrbs() {
+  const n = S.orbs.length;
+  for (let i = 0; i < Math.min(n, orbs.length); i++) orbs[i].color = S.orbs[i];
+  while (orbs.length < n) {
+    const i = orbs.length;
+    orbs.push({
+      color:      S.orbs[i],
+      phx:        Math.random() * Math.PI * 2,
+      phy:        Math.random() * Math.PI * 2,
+      fx:         0.05 + Math.random() * 0.1,
+      fy:         0.05 + Math.random() * 0.1,
+      ax:         0.08 + Math.random() * 0.12,
+      ay:         0.08 + Math.random() * 0.12,
+      cx:         0.5  + (Math.random() - 0.5) * 0.26,
+      cy:         0.5  + (Math.random() - 0.5) * 0.26,
+      sizeMul:    0.75 + Math.random() * 0.6,
+      breathPh:   Math.random() * Math.PI * 2,
+      breathFreq: 0.15 + Math.random() * 0.25,
+    });
+  }
+  orbs.length = n;
+}
+
+const start = performance.now();
+function frame(now) {
+  const t = (now - start) / 1000, tt = t * S.speed, ms = Math.min(W, H);
+  ctx.clearRect(0, 0, W, H);
+  ctx.globalCompositeOperation = 'lighter';
+  for (const o of orbs) {
+    const x = (o.cx + Math.sin(tt * o.fx * Math.PI + o.phx) * o.ax) * W;
+    const y = (o.cy + Math.cos(tt * o.fy * Math.PI + o.phy) * o.ay) * H;
+    const br = 1 + 0.18 * Math.sin(tt * o.breathFreq * Math.PI + o.breathPh);
+    const r  = ms * S.blobSize * o.sizeMul * br;
+    const [rr, gg, bb] = toRGB(o.color);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0,    `rgba(${rr},${gg},${bb},${(0.95 * S.glow).toFixed(3)})`);
+    g.addColorStop(0.45, `rgba(${rr},${gg},${bb},${(0.45 * S.glow).toFixed(3)})`);
+    g.addColorStop(1,    `rgba(${rr},${gg},${bb},0)`);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  requestAnimationFrame(frame);
+}
+
+// ── Panel builder ─────────────────────────────────────────────────────────────
+function buildPanel() {
+  // Remove old sections, keep brand/title/sub
+  panelEl.querySelectorAll('.section, .footer-note').forEach(el => el.remove());
+
+  function section(title, fn) {
+    const sec = document.createElement('div');
+    sec.className = 'section';
+    const lbl = document.createElement('div');
+    lbl.className = 'section-label';
+    lbl.textContent = title;
+    sec.appendChild(lbl);
+    fn(sec);
+    panelEl.appendChild(sec);
+  }
+
+  function slider(parent, label, key, min, max, step, fmt) {
+    const wrap = document.createElement('div'); wrap.className = 'field';
+    const row  = document.createElement('div'); row.className = 'field-row';
+    const lbl  = document.createElement('div'); lbl.className = 'field-name'; lbl.textContent = label;
+    const val  = document.createElement('div'); val.className = 'field-value'; val.textContent = fmt(S[key]);
+    row.appendChild(lbl); row.appendChild(val);
+    const inp  = document.createElement('input'); inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = S[key];
+    inp.addEventListener('input', () => {
+      S[key] = parseFloat(inp.value); val.textContent = fmt(S[key]); applyState();
+    });
+    wrap.appendChild(row); wrap.appendChild(inp); parent.appendChild(wrap);
+  }
+
+  function colorSwatch(parent, labelText, getValue, setValue) {
+    const wrap = document.createElement('div'); wrap.className = 'color-entry';
+    const sw   = document.createElement('div'); sw.className = 'swatch'; sw.style.background = getValue();
+    const inp  = document.createElement('input'); inp.type = 'color'; inp.value = getValue();
+    inp.addEventListener('input', () => { sw.style.background = inp.value; setValue(inp.value); applyState(); });
+    sw.appendChild(inp);
+    const lbl  = document.createElement('div'); lbl.className = 'color-label'; lbl.textContent = getValue().toUpperCase();
+    inp.addEventListener('input', () => { lbl.textContent = inp.value.toUpperCase(); });
+    wrap.appendChild(sw); wrap.appendChild(lbl); parent.appendChild(wrap);
+  }
+
+  // PALETTE
+  section('Palette', sec => {
+    const bgField = document.createElement('div'); bgField.className = 'field';
+    const bgRow = document.createElement('div'); bgRow.className = 'field-row';
+    const bgLbl = document.createElement('div'); bgLbl.className = 'field-name'; bgLbl.textContent = 'Background';
+    const bgVal = document.createElement('div'); bgVal.className = 'field-value'; bgVal.textContent = S.bg.toUpperCase();
+    bgRow.appendChild(bgLbl); bgRow.appendChild(bgVal);
+    bgField.appendChild(bgRow);
+    colorSwatch(bgField, 'Background', () => S.bg, v => { S.bg = v; bgVal.textContent = v.toUpperCase(); });
+    sec.appendChild(bgField);
+
+    const orbField = document.createElement('div'); orbField.className = 'field';
+    const orbRow = document.createElement('div'); orbRow.className = 'field-row'; orbRow.style.marginBottom = '8px';
+    const orbLbl = document.createElement('div'); orbLbl.className = 'field-name'; orbLbl.textContent = 'Orbs';
+    const orbVal = document.createElement('div'); orbVal.className = 'field-value'; orbVal.textContent = S.orbs.length + ' colors';
+    orbRow.appendChild(orbLbl); orbRow.appendChild(orbVal);
+    orbField.appendChild(orbRow);
+
+    const list = document.createElement('div'); list.className = 'color-list';
+    S.orbs.forEach((color, i) => {
+      const entry = document.createElement('div'); entry.className = 'color-entry';
+      const sw = document.createElement('div'); sw.className = 'swatch'; sw.style.background = color;
+      const inp = document.createElement('input'); inp.type = 'color'; inp.value = color;
+      inp.addEventListener('input', () => { sw.style.background = inp.value; lbl.textContent = `Orb ${i+1} · ${inp.value.toUpperCase()}`; S.orbs[i] = inp.value; applyState(); });
+      sw.appendChild(inp);
+      const lbl = document.createElement('div'); lbl.className = 'color-label'; lbl.textContent = `Orb ${i+1} · ${color.toUpperCase()}`;
+      const rm = document.createElement('button'); rm.className = 'rm-btn'; rm.textContent = '✕'; rm.title = 'Remove';
+      rm.addEventListener('click', () => { if (S.orbs.length > 1) { S.orbs.splice(i, 1); buildPanel(); applyState(); } });
+      entry.appendChild(sw); entry.appendChild(lbl); entry.appendChild(rm);
+      list.appendChild(entry);
+    });
+    orbField.appendChild(list);
+
+    const addBtn = document.createElement('button'); addBtn.className = 'add-btn'; addBtn.textContent = '+ Add orb';
+    addBtn.addEventListener('click', () => {
+      if (S.orbs.length < 12) { S.orbs.push(NEW_COLORS[_colorIdx++ % NEW_COLORS.length]); buildPanel(); applyState(); }
+    });
+    orbField.appendChild(addBtn);
+    sec.appendChild(orbField);
+  });
+
+  // MOTION
+  section('Motion', sec => {
+    slider(sec, 'Speed', 'speed', 0.1, 3, 0.05, v => v.toFixed(2) + '×');
+    slider(sec, 'Blob size', 'blobSize', 0.1, 0.8, 0.01, v => v.toFixed(2));
+  });
+
+  // APPEARANCE
+  section('Appearance', sec => {
+    slider(sec, 'Glow', 'glow', 0, 1.5, 0.05, v => v.toFixed(2));
+    slider(sec, 'Film grain', 'grain', 0, 0.2, 0.005, v => v.toFixed(3));
+
+    const tintField = document.createElement('div'); tintField.className = 'field'; tintField.style.marginTop = '14px';
+    const tintRow = document.createElement('div'); tintRow.className = 'field-row';
+    const tintLbl = document.createElement('div'); tintLbl.className = 'field-name'; tintLbl.textContent = 'Overlay tint';
+    const tintVal = document.createElement('div'); tintVal.className = 'field-value'; tintVal.textContent = S.overlayTint.toUpperCase();
+    tintRow.appendChild(tintLbl); tintRow.appendChild(tintVal);
+    tintField.appendChild(tintRow);
+    colorSwatch(tintField, 'Overlay tint', () => S.overlayTint, v => { S.overlayTint = v; tintVal.textContent = v.toUpperCase(); });
+    sec.appendChild(tintField);
+
+    slider(sec, 'Overlay strength', 'overlayStrength', 0, 1, 0.05, v => v.toFixed(2));
+  });
+
+  // FUSION FILTER
+  section('Fusion filter', sec => {
+    slider(sec, 'Blur radius', 'gooBlur', 5, 40, 1, v => v + 'px');
+    slider(sec, 'Cutoff', 'gooCutoff', 2, 30, 1, v => String(v));
+  });
+
+  // Footer
+  const foot = document.createElement('div');
+  foot.className = 'footer-note';
+  foot.innerHTML = 'Built by <a href="https://github.com/Memo-Es">Memo-Es</a> · Claude-assisted';
+  panelEl.appendChild(foot);
+}
+
+// ── Toolbar buttons ───────────────────────────────────────────────────────────
+document.getElementById('addOrbBtn').addEventListener('click', () => {
+  if (S.orbs.length < 12) { S.orbs.push(NEW_COLORS[_colorIdx++ % NEW_COLORS.length]); buildPanel(); applyState(); }
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  S = JSON.parse(JSON.stringify(DEFAULTS)); _colorIdx = 0; buildPanel(); applyState();
+});
+
+// ── Export ────────────────────────────────────────────────────────────────────
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const snap = JSON.stringify(S);
+  const co = -(S.gooCutoff * 0.42).toFixed(2);
+  const html = `<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Animated Orb</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;background:${S.bg};}
+.stage{position:fixed;inset:0;overflow:hidden;background:${S.bg};isolation:isolate;}
+.texture{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.5;mix-blend-mode:soft-light;pointer-events:none;}
+.goo{position:absolute;inset:0;filter:url(#goo);will-change:filter;}
+.goo canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
+.overlay{position:absolute;inset:0;mix-blend-mode:overlay;pointer-events:none;}
+.grain{position:absolute;inset:-50%;width:200%;height:200%;pointer-events:none;mix-blend-mode:overlay;background-size:180px 180px;animation:gs .6s steps(2) infinite;}
+@keyframes gs{0%{transform:translate(0,0)}50%{transform:translate(-6%,4%)}100%{transform:translate(3%,-5%)}}
+.vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(120% 100% at 50% 50%,transparent 55%,rgba(0,0,0,.55) 100%);}
+</style></head><body>
+<div class="stage">
+  <img class="texture" alt="" aria-hidden="true" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAA00lEQVR42gHIADf/Af788OwBDv4BAP8AAPz+APv7/+Xu+wYEBAHf9v7q9/4GBAMIBQADAQAFAPj6+O/8/QsBksLN5fUQ/P3+DAT1DgLuCvvfBP/zHx84AWCfrfL6FO/kzQH01wD03QD++PwGHBseNAGw2erZ5PDGwqX04cUA+/v7/gX3+wMJChABwuf3BP7vubul5NzP6urt7O33x9fCRUBwAYKlsCce+//83Nfb1t3j+NHU4RQGGkpPXAGwwcHa3MkiKRsDBg33+Qnf2t8UCw0nJiufFm95mfw9JgAAAABJRU5ErkJggg==" />
+  <div class="goo"><canvas id="c"></canvas></div>
+  <div class="overlay" style="background:radial-gradient(120% 120% at 50% 0%,${S.overlayTint} 0%,transparent 55%);opacity:${S.overlayStrength}"></div>
+  <div class="grain" id="g" style="opacity:${S.grain}"></div>
+  <div class="vignette"></div>
+</div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="goo" color-interpolation-filters="sRGB" x="-20%" y="-20%" width="140%" height="140%">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="${S.gooBlur}" result="blur"/>
+    <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 ${S.gooCutoff} ${co}" result="goo"/>
+    <feGaussianBlur in="goo" stdDeviation="6" result="soft"/>
+    <feComposite in="soft" in2="soft" operator="over"/>
+  </filter>
+</defs></svg>
+<script>
+(()=>{const S=${snap};const canvas=document.getElementById('c'),ctx=canvas.getContext('2d');let W=0,H=0,DPR=1,orbs=[];function resize(){DPR=Math.min(devicePixelRatio||1,2);const r=canvas.getBoundingClientRect();W=Math.max(1,r.width);H=Math.max(1,r.height);canvas.width=Math.round(W*DPR);canvas.height=Math.round(H*DPR);ctx.setTransform(DPR,0,0,DPR,0,0);}function makeOrbs(){orbs=S.orbs.map(color=>({color,phx:Math.random()*Math.PI*2,phy:Math.random()*Math.PI*2,fx:.05+Math.random()*.1,fy:.05+Math.random()*.1,ax:.08+Math.random()*.12,ay:.08+Math.random()*.12,cx:.5+(Math.random()-.5)*.26,cy:.5+(Math.random()-.5)*.26,sizeMul:.75+Math.random()*.6,breathPh:Math.random()*Math.PI*2,breathFreq:.15+Math.random()*.25}));}const _p=document.createElement('canvas').getContext('2d');function toRGB(c){_p.fillStyle='#000';_p.fillStyle=c;const s=_p.fillStyle;if(s[0]==='#'){const h=s.length===4?s.slice(1).split('').map(x=>x+x).join(''):s.slice(1);return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}const m=s.match(/\\d+(\\.\\d+)?/g);return m?[+m[0],+m[1],+m[2]]:[120,120,255];}const start=performance.now();function frame(now){const t=(now-start)/1e3,tt=t*S.speed,ms=Math.min(W,H);ctx.clearRect(0,0,W,H);ctx.globalCompositeOperation='lighter';for(const o of orbs){const x=(o.cx+Math.sin(tt*o.fx*Math.PI+o.phx)*o.ax)*W,y=(o.cy+Math.cos(tt*o.fy*Math.PI+o.phy)*o.ay)*H,br=1+.18*Math.sin(tt*o.breathFreq*Math.PI+o.breathPh),r=ms*S.blobSize*o.sizeMul*br,[rr,gg,bb]=toRGB(o.color),g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,'rgba('+rr+','+gg+','+bb+','+(0.95*S.glow).toFixed(3)+')');g.addColorStop(.45,'rgba('+rr+','+gg+','+bb+','+(0.45*S.glow).toFixed(3)+')');g.addColorStop(1,'rgba('+rr+','+gg+','+bb+',0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}ctx.globalCompositeOperation='source-over';requestAnimationFrame(frame);}const s=90,gc=document.createElement('canvas');gc.width=gc.height=s;const gx=gc.getContext('2d'),img=gx.createImageData(s,s);for(let i=0;i<img.data.length;i+=4){const v=(Math.random()*255)|0;img.data[i]=img.data[i+1]=img.data[i+2]=v;img.data[i+3]=255;}gx.putImageData(img,0,0);document.getElementById('g').style.backgroundImage='url('+gc.toDataURL()+')';resize();makeOrbs();requestAnimationFrame(frame);let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(resize,100);});})();
+<\/script></body></html>`;
+  const blob = new Blob([html], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'animated-orb.html'; a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+buildGrain();
+resize();
+buildPanel();
+applyState();
+requestAnimationFrame(frame);
+
+let rzT;
+window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(resize, 100); });
+
+})();
+</script>
+</body>
+</html>
