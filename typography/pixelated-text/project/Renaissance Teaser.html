@@ -1,0 +1,431 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Renaissance Teaser</title>
+<style>
+  @font-face {
+    font-family: "PP Editorial New";
+    src: url("fonts/PPEditorialNew-Regular.otf") format("opentype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: block;
+  }
+  @font-face {
+    font-family: "PP Editorial New";
+    src: url("fonts/PPEditorialNew-Ultralight.otf") format("opentype");
+    font-weight: 200;
+    font-style: normal;
+    font-display: block;
+  }
+  @font-face {
+    font-family: "PP Editorial New";
+    src: url("fonts/PPEditorialNew-Italic.otf") format("opentype");
+    font-weight: 400;
+    font-style: italic;
+    font-display: block;
+  }
+  @import url("https://fonts.googleapis.com/css2?family=Funnel+Sans:wght@300;400;500;600;700;800&display=swap");
+  html, body { margin: 0; padding: 0; background: #000; overflow: hidden; height: 100%; }
+  #root { position: fixed; inset: 0; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="animations.jsx"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PixelatedText
+//
+// Renders text into an offscreen canvas, then samples it at a coarse grid that
+// shrinks over `progress` (0 → blocky, 1 → crisp). At the same time we fade
+// opacity up from 0. The result is a text that "materializes" out of chunky
+// pixel blocks into crisp type.
+//
+// Implementation notes:
+//  - We draw the real text to a hidden <canvas> at full resolution.
+//  - On each frame, we clear a visible canvas and for each cell in a grid
+//    (cellSize px), sample the average alpha of the source canvas under that
+//    cell. If above threshold, we paint a filled square with that color.
+//  - As cellSize approaches 1, we just draw the source canvas directly for
+//    perfect crispness.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PixelatedText({
+  text,
+  font = '"PP Editorial New", serif',
+  weight = 400,
+  italic = false,
+  size = 220,
+  color = '#FAF8F5',
+  letterSpacing = -0.025,       // em
+  progress = 1,                 // 0 = maximally blocky, 1 = crisp
+  opacity = 1,
+  align = 'center',             // 'center' | 'left'
+  x,                            // center x (if align='center') or left x
+  y,                            // baseline-ish center y
+  maxCell = 48,                 // starting block size in px
+  minCell = 1,                  // final block size (1 = pixel perfect)
+  width = 1920,
+  height = 400,
+}) {
+  const srcRef = React.useRef(null);
+  const dstRef = React.useRef(null);
+
+  // Draw the source text once whenever inputs change.
+  React.useEffect(() => {
+    const src = srcRef.current;
+    if (!src) return;
+    const dpr = window.devicePixelRatio || 1;
+    src.width = Math.floor(width * dpr);
+    src.height = Math.floor(height * dpr);
+    const ctx = src.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = color;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = align;
+    const style = italic ? 'italic' : 'normal';
+    ctx.font = `${style} ${weight} ${size}px ${font}`;
+    // Apply letter-spacing manually since canvas doesn't support it well.
+    const cx = align === 'center' ? width / 2 : 0;
+    const cy = height / 2;
+    drawTrackedText(ctx, text, cx, cy, letterSpacing * size, align);
+  }, [text, font, weight, italic, size, color, letterSpacing, align, width, height]);
+
+  // Re-render destination every frame based on progress.
+  React.useEffect(() => {
+    const src = srcRef.current;
+    const dst = dstRef.current;
+    if (!src || !dst) return;
+    const dpr = window.devicePixelRatio || 1;
+    dst.width = Math.floor(width * dpr);
+    dst.height = Math.floor(height * dpr);
+    const ctx = dst.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, dst.width, dst.height);
+    ctx.scale(dpr, dpr);
+
+    // cell size: exponential falloff so the jump from blocky to crisp feels
+    // natural rather than linear.
+    const p = Math.max(0, Math.min(1, progress));
+    // Use an exponential curve: maxCell * (minCell/maxCell)^p
+    const ratio = minCell / maxCell;
+    const cellSize = Math.max(minCell, Math.round(maxCell * Math.pow(ratio, p)));
+
+    if (cellSize <= 1 && p >= 0.995) {
+      // Crisp path — just blit.
+      ctx.drawImage(src, 0, 0, width, height);
+      return;
+    }
+
+    // Sample source canvas on a coarse grid.
+    const srcCtx = src.getContext('2d');
+    // Use getImageData on the *full* source for accurate sampling.
+    const imgData = srcCtx.getImageData(0, 0, src.width, src.height).data;
+    const sw = src.width;
+    const sh = src.height;
+
+    // Snap to grid so blocks align cleanly.
+    const cellPx = cellSize; // in CSS px
+    const cellSrc = cellSize * dpr; // in source canvas px
+
+    // Disable AA for crisp squares
+    ctx.imageSmoothingEnabled = false;
+
+    // Iterate cells across CSS dimensions
+    for (let gy = 0; gy < height; gy += cellPx) {
+      for (let gx = 0; gx < width; gx += cellPx) {
+        // Sample center of cell
+        const sx = Math.min(sw - 1, Math.floor((gx + cellPx / 2) * dpr));
+        const sy = Math.min(sh - 1, Math.floor((gy + cellPx / 2) * dpr));
+        const idx = (sy * sw + sx) * 4;
+        const a = imgData[idx + 3];
+        if (a < 24) continue;
+
+        // Also average a couple points for better fidelity at larger cells
+        let rAcc = imgData[idx], gAcc = imgData[idx+1], bAcc = imgData[idx+2], aAcc = a;
+        let n = 1;
+        if (cellSrc > 4) {
+          const offs = [
+            [-cellSrc/3, -cellSrc/3],
+            [cellSrc/3, -cellSrc/3],
+            [-cellSrc/3, cellSrc/3],
+            [cellSrc/3, cellSrc/3],
+          ];
+          for (const [dx, dy] of offs) {
+            const xx = Math.max(0, Math.min(sw-1, Math.floor(sx + dx)));
+            const yy = Math.max(0, Math.min(sh-1, Math.floor(sy + dy)));
+            const ii = (yy * sw + xx) * 4;
+            rAcc += imgData[ii];
+            gAcc += imgData[ii+1];
+            bAcc += imgData[ii+2];
+            aAcc += imgData[ii+3];
+            n++;
+          }
+        }
+        const rr = Math.round(rAcc / n);
+        const gg = Math.round(gAcc / n);
+        const bb = Math.round(bAcc / n);
+        const aa = aAcc / n / 255;
+        if (aa < 0.08) continue;
+        ctx.fillStyle = `rgba(${rr},${gg},${bb},${aa})`;
+        ctx.fillRect(gx, gy, cellPx, cellPx);
+      }
+    }
+  }, [progress, width, height, color, text, size, letterSpacing, weight, italic, font, align, maxCell, minCell]);
+
+  // Positioning: if `align === 'center'`, (x,y) is the center of the canvas.
+  // Otherwise (x,y) is top-left of the canvas.
+  const left = align === 'center' ? (x ?? width/2) - width/2 : (x ?? 0);
+  const top  = (y ?? height/2) - height/2;
+
+  return (
+    <div style={{ position: 'absolute', left, top, width, height, opacity, pointerEvents: 'none' }}>
+      {/* Hidden source canvas */}
+      <canvas ref={srcRef} style={{ display: 'none' }} />
+      {/* Visible pixelated canvas */}
+      <canvas
+        ref={dstRef}
+        style={{ width, height, display: 'block', imageRendering: 'pixelated' }}
+      />
+    </div>
+  );
+}
+
+// Draw text with manual letter-spacing so it matches PP Editorial New's
+// -0.025em tracking without depending on canvas's patchy letterSpacing support.
+function drawTrackedText(ctx, text, cx, cy, tracking, align) {
+  const widths = [];
+  let total = 0;
+  for (const ch of text) {
+    const w = ctx.measureText(ch).width;
+    widths.push(w);
+    total += w;
+  }
+  total += tracking * Math.max(0, text.length - 1);
+
+  let x;
+  if (align === 'center') x = cx - total / 2;
+  else if (align === 'right') x = cx - total;
+  else x = cx;
+
+  ctx.textAlign = 'left';
+  let i = 0;
+  for (const ch of text) {
+    ctx.fillText(ch, x, cy);
+    x += widths[i] + tracking;
+    i++;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Timeline
+//
+// Total 16s:
+//   0.0 – 3.0s  ACT 1: "A new era for CX" — pixelated reveal (0..1.5s),
+//                      hold crisp (1.5..2.3s), crisp-to-blocky dissolve (2.3..3.0s).
+//   3.0 – 8.0s  ACT 2: pure black hold (5s).
+//   8.0 – 16.0s ACT 3: "Renaissance" pixelated reveal (8.0..9.8s),
+//                      hold (9.8..11.0s),
+//                      "May 13, NYC" pixelated reveal (11.0..12.6s),
+//                      hold (12.6..16.0s).
+// ─────────────────────────────────────────────────────────────────────────────
+
+const T_ACT1_IN_START = 0.2;
+const T_ACT1_IN_END   = 1.8;
+const T_ACT1_OUT_START = 2.6;
+const T_ACT1_OUT_END   = 3.2;
+
+const T_ACT3_TITLE_IN_START = 8.4;
+const T_ACT3_TITLE_IN_END   = 10.0;
+const T_ACT3_DATE_IN_START  = 11.0;
+const T_ACT3_DATE_IN_END    = 12.6;
+
+const TOTAL = 16.0;
+
+function Scene() {
+  const t = useTime();
+
+  // Act 1 progress: 0 → 1 during reveal; then 1 → 0 during out (re-pixelates).
+  let act1Progress = 0;
+  let act1Opacity = 0;
+  if (t >= T_ACT1_IN_START && t < T_ACT1_OUT_END) {
+    if (t < T_ACT1_IN_END) {
+      // Reveal
+      const local = (t - T_ACT1_IN_START) / (T_ACT1_IN_END - T_ACT1_IN_START);
+      act1Progress = Easing.easeOutCubic(local);
+      act1Opacity = Easing.easeOutQuad(Math.min(1, local * 1.6));
+    } else if (t < T_ACT1_OUT_START) {
+      // Hold
+      act1Progress = 1;
+      act1Opacity = 1;
+    } else {
+      // Dissolve back into pixels + fade out
+      const local = (t - T_ACT1_OUT_START) / (T_ACT1_OUT_END - T_ACT1_OUT_START);
+      act1Progress = 1 - Easing.easeInQuad(local);
+      act1Opacity = 1 - Easing.easeInQuad(local);
+    }
+  }
+
+  // Act 3 Title: pixelate in, hold.
+  let titleProgress = 0;
+  let titleOpacity = 0;
+  if (t >= T_ACT3_TITLE_IN_START) {
+    if (t < T_ACT3_TITLE_IN_END) {
+      const local = (t - T_ACT3_TITLE_IN_START) / (T_ACT3_TITLE_IN_END - T_ACT3_TITLE_IN_START);
+      titleProgress = Easing.easeOutCubic(local);
+      titleOpacity = Easing.easeOutQuad(Math.min(1, local * 1.6));
+    } else {
+      titleProgress = 1;
+      titleOpacity = 1;
+    }
+  }
+
+  // Act 3 Date: pixelate in, hold.
+  let dateProgress = 0;
+  let dateOpacity = 0;
+  if (t >= T_ACT3_DATE_IN_START) {
+    if (t < T_ACT3_DATE_IN_END) {
+      const local = (t - T_ACT3_DATE_IN_START) / (T_ACT3_DATE_IN_END - T_ACT3_DATE_IN_START);
+      dateProgress = Easing.easeOutCubic(local);
+      dateOpacity = Easing.easeOutQuad(Math.min(1, local * 1.6));
+    } else {
+      dateProgress = 1;
+      dateOpacity = 1;
+    }
+  }
+
+  // Faint vignette-ish ambient life so the black beat doesn't feel like a bug.
+  // Subtle breathing radial glow centered, barely visible.
+  const breathe = 0.5 + 0.5 * Math.sin(t * 0.6);
+  const ambientOpacity = (t >= 3.0 && t <= 8.2)
+    ? 0.08 + 0.04 * breathe
+    : 0.05 + 0.03 * breathe;
+
+  return (
+    <>
+      {/* Ambient subtle glow — warm, very low opacity. Keeps "black beat" alive. */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'radial-gradient(ellipse at 50% 55%, rgba(155,77,175,0.10) 0%, rgba(196,93,53,0.05) 28%, rgba(0,0,0,0) 60%)',
+        opacity: ambientOpacity,
+        pointerEvents: 'none',
+      }} />
+
+      {/* ACT 1 — "A new era for CX" */}
+      {act1Opacity > 0.001 && (
+        <PixelatedText
+          text="A new era for CX"
+          size={200}
+          weight={400}
+          italic={false}
+          color="#FAF8F5"
+          progress={act1Progress}
+          opacity={act1Opacity}
+          x={960}
+          y={540}
+          width={1920}
+          height={340}
+          maxCell={56}
+          letterSpacing={-0.03}
+        />
+      )}
+
+      {/* ACT 3 — "Renaissance" */}
+      {titleOpacity > 0.001 && (
+        <PixelatedText
+          text="Renaissance"
+          size={220}
+          weight={400}
+          italic={false}
+          color="#FAF8F5"
+          progress={titleProgress}
+          opacity={titleOpacity}
+          x={960}
+          y={470}
+          width={1920}
+          height={360}
+          maxCell={64}
+          letterSpacing={-0.03}
+        />
+      )}
+
+      {/* ACT 3 — "May 13, NYC" */}
+      {dateOpacity > 0.001 && (
+        <PixelatedText
+          text="May 13, NYC"
+          font={'"Funnel Sans", system-ui, sans-serif'}
+          size={54}
+          weight={500}
+          italic={false}
+          color="#C45D35"
+          progress={dateProgress}
+          opacity={dateOpacity}
+          x={960}
+          y={680}
+          width={1920}
+          height={120}
+          maxCell={22}
+          letterSpacing={0.24}
+        />
+      )}
+
+      {/* Timestamp label for review comments */}
+      <TimestampTag />
+    </>
+  );
+}
+
+function TimestampTag() {
+  const t = useTime();
+  const root = React.useRef(null);
+  React.useEffect(() => {
+    const sec = Math.floor(t);
+    const stage = document.querySelector('[data-video-root]');
+    if (stage) stage.setAttribute('data-screen-label', `t=${sec}s`);
+  }, [Math.floor(t)]);
+  return null;
+}
+
+function App() {
+  const [ready, setReady] = React.useState(false);
+  React.useEffect(() => {
+    let cancelled = false;
+    const go = async () => {
+      try {
+        // Force-load the display face + date face so canvas has glyph metrics.
+        await Promise.all([
+          document.fonts.load('400 220px "PP Editorial New"'),
+          document.fonts.load('500 54px "Funnel Sans"'),
+        ]);
+        await document.fonts.ready;
+      } catch {}
+      if (!cancelled) setReady(true);
+    };
+    go();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!ready) {
+    return <div style={{ position: 'fixed', inset: 0, background: '#000' }} />;
+  }
+
+  return (
+    <div data-video-root data-screen-label="t=0s" style={{ position: 'fixed', inset: 0 }}>
+      <Stage width={1920} height={1080} duration={TOTAL} background="#000000" persistKey="renaissance">
+        <Scene />
+      </Stage>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

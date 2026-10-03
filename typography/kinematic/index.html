@@ -1,0 +1,1039 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Kinematic Type Playground</title>
+<link rel="stylesheet" href="../ds.css" />
+<style>
+/* Only what is this playground's own; the rest is ../ds.css. */
+@media (max-width: 960px) {
+  .panel { max-height: none; position: static; }
+}
+@media (max-width: 640px) { .stage { padding: 20px 16px; } }
+.stage-header { gap: 16px; }
+.stage-meta { white-space: nowrap; }
+
+/* A WebGL canvas fills the frame; the flex centring ds.css gives a 2D
+   canvas is not what this one wants. */
+.canvas-frame canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.gl-error {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-dim);
+  font-size: 14px;
+  padding: 24px;
+  text-align: center;
+}
+/* The rail is set every frame; ds.css's 80ms ease would trail it, and run
+   backwards across the whole bar at each wrap. */
+.progress-fill { transition: none; }
+
+.section:last-of-type { border-bottom: none; margin-bottom: 0; }
+.field[hidden] { display: none; }
+
+/* A palette is four stops read as one ramp, so a preset shows as a strip. */
+.palette-chip { display: flex; align-items: center; gap: 8px; }
+.palette-ramp {
+  width: 36px; height: 10px;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.stops { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.stop { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.stop-name { font-size: 11px; color: var(--text-dim); }
+
+/* pixelated-text draws these inline in React; here they are classes. */
+.upload {
+  display: block;
+  padding: 10px 14px;
+  border: 1px dashed rgba(255,255,255,0.18);
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: center;
+  background: rgba(255,255,255,0.02);
+}
+.upload input { display: none; }
+/* The search takes the text input's material from ds.css at chip size. */
+.font-search-wrap { margin-top: 10px; }
+.font-search {
+  width: 100%;
+  background: #0a0a0a;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  transition: border-color 140ms ease;
+}
+.font-search:focus { outline: none; border-color: var(--accent); }
+.font-search::placeholder { color: var(--text-dimmer); }
+.chip-sub { margin-left: 6px; color: var(--text-dimmer); font-size: 11px; }
+.hint { margin-top: 10px; font-size: 11px; color: var(--text-dimmer); margin-bottom: 6px; }
+
+.modal-scrim[hidden], .modal-pane[hidden] { display: none; }
+.modal { position: relative; }
+@media (max-width: 640px) {
+  .modal { grid-template-columns: 1fr; }
+  .modal-tabs { flex-direction: row; padding: 12px; overflow-x: auto; }
+}
+pre.code-block { margin: 0; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage">
+    <div class="stage-header">
+      <h1 class="stage-title">Preview</h1>
+      <div style="display:flex;align-items:center;gap:16px">
+        <div class="stage-meta" id="meta"></div>
+        <button class="export-btn" id="open-export">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 1v8M3.5 5.5L7 9l3.5-3.5M2 11v1.5a0.5 0.5 0 0 0 0.5 0.5h9a0.5 0.5 0 0 0 0.5-0.5V11"/></svg>
+          Export
+        </button>
+      </div>
+    </div>
+    <div class="canvas-frame" id="frame">
+      <canvas id="view"></canvas>
+    </div>
+    <div class="stage-actions">
+      <button class="btn primary" id="replay"><span class="dot"></span> Replay</button>
+      <div class="progress-rail"><div class="progress-fill" id="progress"></div></div>
+      <button class="btn" id="pause" title="Space">Pause</button>
+    </div>
+  </div>
+
+  <aside class="panel" id="panel">
+    <div class="panel-brand">
+      <div class="panel-brand-dot"></div>
+      <div class="panel-brand-name">Kinematic · Playground</div>
+    </div>
+    <h2 class="panel-title">Kinematic type</h2>
+    <p class="panel-sub">
+      A glyph swinging on its own axis, cut into bands that each run a little
+      behind the one above — so the motion shows as steps — with a heat trail
+      that fades through the palette. Tune every parameter live.
+    </p>
+    <div id="controls"></div>
+  </aside>
+</div>
+
+<div class="modal-scrim" id="scrim" hidden>
+  <div class="modal">
+    <button class="modal-close" id="close-export" title="Close (Esc)">×</button>
+    <div class="modal-tabs" id="tabs"></div>
+    <div class="modal-body" id="panes"></div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// State. The composition is the URL — base64 of this object in the hash — so a
+// piece can be reopened, shared, or pasted back from the JSON tab.
+// ─────────────────────────────────────────────────────────────────────────────
+const DEFAULTS = {
+  text: 'a',
+  font: '"Inter", system-ui, sans-serif',
+  weight: 500,
+  italic: false,
+  size: 0.6,           // ink height of the glyph, as a fraction of the frame
+  letterSpacing: -0.02,
+  mode: 'swing',       // swing | spin
+  speed: 0.35,         // cycles per second
+  amplitude: 48,       // degrees either side, swing only
+  perspective: 0.6,
+  bands: 14,           // 1 = no steps
+  delay: 0.045,        // seconds each band trails the one before
+  direction: 'down',   // down | up | center
+  trail: 0.95,         // how much of the trail survives each 60th of a second
+  spread: 1.8,         // px the trail diffuses per frame
+  glow: 0.7,
+  grain: 0.06,
+  palette: 'heatwave',
+  core: '#FFF1DE',
+  warm: '#FF9A1F',
+  cool: '#5A1BC9',
+  background: '#000000',
+};
+
+const PALETTES = {
+  heatwave: { label: 'Heatwave', core: '#FFF1DE', warm: '#FF9A1F', cool: '#5A1BC9', background: '#000000' },
+  acid:     { label: 'Acid',     core: '#F4FFE4', warm: '#B6FF3B', cool: '#00897B', background: '#050807' },
+  ice:      { label: 'Ice',      core: '#F2FBFF', warm: '#6FD3FF', cool: '#2B3BD6', background: '#02030A' },
+  ember:    { label: 'Ember',    core: '#FFE9E0', warm: '#FF4D2E', cool: '#5B0F2E', background: '#070203' },
+  paper:    { label: 'Paper',    core: '#111111', warm: '#C45D35', cool: '#9B4DAF', background: '#FAF8F5' },
+};
+
+const FONT_OPTIONS = [
+  { value: '"Inter", system-ui, sans-serif', label: 'Inter' },
+  { value: 'system-ui, sans-serif', label: 'System' },
+  { value: 'ui-monospace, SFMono-Regular, Menlo, monospace', label: 'Mono' },
+  { value: 'Georgia, serif', label: 'Georgia' },
+];
+const GOOGLE_FONT_PRESETS = [
+  'Inter', 'Playfair Display', 'Space Grotesk', 'DM Serif Display',
+  'Archivo Black', 'Rubik', 'IBM Plex Mono', 'Fredoka',
+];
+
+function readHash() {
+  try {
+    const h = location.hash.slice(1);
+    if (!h) return {};
+    return JSON.parse(decodeURIComponent(escape(atob(h))));
+  } catch { return {}; }
+}
+const S = { ...DEFAULTS, ...readHash() };
+let hashTimer = 0;
+function writeHash() {
+  clearTimeout(hashTimer);
+  hashTimer = setTimeout(() => {
+    const s = btoa(unescape(encodeURIComponent(JSON.stringify(S))));
+    history.replaceState(null, '', '#' + s);
+  }, 200);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The engine.
+//
+// Three passes, all on the GPU:
+//
+//  1. GLYPH. The text is rasterised once into a texture. Each fragment works
+//     out which horizontal BAND it is in, runs the clock back by that band's
+//     delay, and inverts a Y-axis rotation with perspective to find where on
+//     the glyph it lands. Bands on different clocks is the slit scan: the
+//     glyph's edge breaks into steps wherever it is moving sideways.
+//  2. TRAIL. A feedback buffer keeps max(glyph, blurred previous × decay), so
+//     wherever the glyph has been fades out behind it.
+//  3. RAMP. The trail's value is mapped through four colour stops — core at
+//     the glyph, then warm, then cool, then the ground — plus a glow and grain.
+//     That is the "aberration": not a channel offset, but time mapped to hue.
+//
+// Smooth or stepped is one control — Bands. At 1 the glyph is a single plane
+// and the trail is a clean motion smear; raise it and the steps appear.
+// ─────────────────────────────────────────────────────────────────────────────
+const VERT = `#version 300 es
+in vec2 aPos;
+out vec2 vUv;
+void main() { vUv = aPos * 0.5 + 0.5; gl_Position = vec4(aPos, 0.0, 1.0); }`;
+
+const GLYPH_FRAG = `#version 300 es
+precision highp float;
+in vec2 vUv;
+out vec4 o;
+uniform sampler2D uSrc;
+uniform vec2 uRes;
+uniform float uTime, uBands, uDelay, uSpeed, uAmp, uPersp;
+uniform int uMode, uDir;
+const float TAU = 6.28318530718;
+void main() {
+  float yTop = 1.0 - vUv.y;
+  float band;
+  if (uDir == 0) band = floor(yTop * uBands);
+  else if (uDir == 1) band = floor((1.0 - yTop) * uBands);
+  else band = floor(abs(yTop - 0.5) * uBands);
+  float t = uTime - band * uDelay;
+  float a = uMode == 0 ? sin(t * uSpeed * TAU) * uAmp : t * uSpeed * TAU;
+  float c = cos(a), s = sin(a);
+  float asp = uRes.x / uRes.y;
+  vec2 q = (vUv - 0.5) * vec2(asp, 1.0);
+  // A plane point (X, Y) turned by a about Y, seen with perspective k:
+  // x = X c / (1 + X s k). Solved for X, then Y scaled back the same way.
+  float den = c - q.x * s * uPersp;
+  if (abs(den) < 1e-4) { o = vec4(0.0); return; }
+  float X = q.x / den;
+  float w = 1.0 + X * s * uPersp;
+  if (w <= 0.05) { o = vec4(0.0); return; }
+  vec2 uv = vec2(X / asp, q.y * w) + 0.5;
+  if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { o = vec4(0.0); return; }
+  o = vec4(texture(uSrc, uv).r, 0.0, 0.0, 1.0);
+}`;
+
+const TRAIL_FRAG = `#version 300 es
+precision highp float;
+in vec2 vUv;
+out vec4 o;
+uniform sampler2D uGlyph, uPrev;
+uniform vec2 uTexel;
+uniform float uDecay, uSpread;
+void main() {
+  float g = texture(uGlyph, vUv).r;
+  vec2 d = uTexel * uSpread;
+  float p = texture(uPrev, vUv).r * 2.0
+          + texture(uPrev, vUv + vec2(d.x, 0.0)).r
+          + texture(uPrev, vUv - vec2(d.x, 0.0)).r
+          + texture(uPrev, vUv + vec2(0.0, d.y)).r
+          + texture(uPrev, vUv - vec2(0.0, d.y)).r;
+  o = vec4(max(g, p / 6.0 * uDecay), 0.0, 0.0, 1.0);
+}`;
+
+const RAMP_FRAG = `#version 300 es
+precision highp float;
+in vec2 vUv;
+out vec4 o;
+uniform sampler2D uTrail;
+uniform vec2 uTexel, uRes;
+uniform vec3 uCore, uWarm, uCool, uBg;
+uniform float uGlow, uGrain, uTime, uScale;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+vec3 ramp(float h) {
+  // ground → cool → warm → core. The core stop is wide so the glyph itself
+  // reads as a solid face, not as the top of a gradient.
+  // Warm takes the widest share: it is the band that hugs the glyph, and the
+  // one the reference reads by. Cool is what is left as the trail dies.
+  vec3 c = mix(uBg, uCool, smoothstep(0.03, 0.18, h));
+  c = mix(c, uWarm, smoothstep(0.2, 0.46, h));
+  c = mix(c, uCore, smoothstep(0.84, 0.97, h));
+  return c;
+}
+void main() {
+  float v = texture(uTrail, vUv).r;
+  float g = 0.0;
+  for (int i = 0; i < 12; i++) {
+    float an = float(i) * 0.5235988;
+    vec2 dir = vec2(cos(an), sin(an));
+    g += texture(uTrail, vUv + dir * uTexel * 7.0 * uScale).r;
+    g += texture(uTrail, vUv + dir * uTexel * 16.0 * uScale).r;
+  }
+  g /= 24.0;
+  float h = clamp(max(v, g * uGlow * 0.9), 0.0, 1.0);
+  vec3 col = ramp(h);
+  col += (hash(vUv * uRes + fract(uTime) * 91.7) - 0.5) * uGrain;
+  o = vec4(col, 1.0);
+}`;
+
+class Engine {
+  constructor(canvas) {
+    const gl = canvas.getContext('webgl2', { antialias: false, premultipliedAlpha: false });
+    if (!gl) throw new Error('WebGL2 is not available in this browser.');
+    this.gl = gl;
+    this.canvas = canvas;
+    this.progs = {
+      glyph: this.program(GLYPH_FRAG),
+      trail: this.program(TRAIL_FRAG),
+      ramp: this.program(RAMP_FRAG),
+    };
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    this.vao = gl.createVertexArray();
+    gl.bindVertexArray(this.vao);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    // Half-float targets where the driver can render to them, so a long trail
+    // decays in fine steps rather than banding at 8 bits.
+    this.float = !!gl.getExtension('EXT_color_buffer_float');
+    this.src = this.texture();
+    this.w = 0; this.h = 0;
+  }
+  program(frag) {
+    const gl = this.gl;
+    const sh = (type, code) => {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, code);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      return s;
+    };
+    const p = gl.createProgram();
+    gl.attachShader(p, sh(gl.VERTEX_SHADER, VERT));
+    gl.attachShader(p, sh(gl.FRAGMENT_SHADER, frag));
+    gl.bindAttribLocation(p, 0, 'aPos');
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    const u = {};
+    const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+    for (let i = 0; i < n; i++) {
+      const name = gl.getActiveUniform(p, i).name;
+      u[name] = gl.getUniformLocation(p, name);
+    }
+    return { p, u };
+  }
+  texture() {
+    const gl = this.gl;
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return t;
+  }
+  target(w, h) {
+    const gl = this.gl;
+    const tex = this.texture();
+    if (this.float) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
+    else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    const fb = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    return { tex, fb };
+  }
+  resize(w, h) {
+    if (w === this.w && h === this.h) return;
+    const gl = this.gl;
+    this.w = w; this.h = h;
+    this.canvas.width = w; this.canvas.height = h;
+    for (const t of [this.glyph, this.a, this.b]) if (t) { gl.deleteTexture(t.tex); gl.deleteFramebuffer(t.fb); }
+    this.glyph = this.target(w, h);
+    this.a = this.target(w, h);
+    this.b = this.target(w, h);
+    this.clear();
+  }
+  clear() {
+    const gl = this.gl;
+    for (const t of [this.a, this.b]) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, t.fb);
+      gl.clearColor(0, 0, 0, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+  }
+  setSource(canvas2d) {
+    const gl = this.gl;
+    gl.bindTexture(gl.TEXTURE_2D, this.src);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas2d);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+  }
+  pass(prog, fb) {
+    const gl = this.gl;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.viewport(0, 0, this.w, this.h);
+    gl.useProgram(prog.p);
+    return prog.u;
+  }
+  bind(unit, tex, loc) {
+    const gl = this.gl;
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.uniform1i(loc, unit);
+  }
+  /** One frame at clock `time`, `dt` seconds after the last. `scale` is px per CSS px. */
+  step(time, dt, s, scale) {
+    const gl = this.gl;
+    gl.bindVertexArray(this.vao);
+    const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+
+    let u = this.pass(this.progs.glyph, this.glyph.fb);
+    this.bind(0, this.src, u.uSrc);
+    gl.uniform2f(u.uRes, this.w, this.h);
+    gl.uniform1f(u.uTime, time);
+    gl.uniform1f(u.uBands, Math.max(1, s.bands));
+    gl.uniform1f(u.uDelay, s.delay);
+    gl.uniform1f(u.uSpeed, s.speed);
+    gl.uniform1f(u.uAmp, (s.amplitude * Math.PI) / 180);
+    gl.uniform1f(u.uPersp, s.perspective);
+    gl.uniform1i(u.uMode, s.mode === 'spin' ? 1 : 0);
+    gl.uniform1i(u.uDir, { down: 0, up: 1, center: 2 }[s.direction] ?? 0);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    // Decay is per 60th of a second, so the trail is the same length whatever
+    // the frame rate — an export at 24fps matches the preview at 120.
+    u = this.pass(this.progs.trail, this.b.fb);
+    this.bind(0, this.glyph.tex, u.uGlyph);
+    this.bind(1, this.a.tex, u.uPrev);
+    gl.uniform2f(u.uTexel, 1 / this.w, 1 / this.h);
+    gl.uniform1f(u.uDecay, Math.pow(s.trail, dt * 60));
+    gl.uniform1f(u.uSpread, s.spread * scale * Math.min(1, dt * 60));
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    [this.a, this.b] = [this.b, this.a];
+
+    u = this.pass(this.progs.ramp, null);
+    this.bind(0, this.a.tex, u.uTrail);
+    gl.uniform2f(u.uTexel, 1 / this.w, 1 / this.h);
+    gl.uniform2f(u.uRes, this.w, this.h);
+    gl.uniform3f(u.uCore, ...rgb(s.core));
+    gl.uniform3f(u.uWarm, ...rgb(s.warm));
+    gl.uniform3f(u.uCool, ...rgb(s.cool));
+    gl.uniform3f(u.uBg, ...rgb(s.background));
+    gl.uniform1f(u.uGlow, s.glow);
+    gl.uniform1f(u.uGrain, s.grain);
+    gl.uniform1f(u.uTime, time);
+    gl.uniform1f(u.uScale, scale);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+  destroy() {
+    const ext = this.gl.getExtension('WEBGL_lose_context');
+    if (ext) ext.loseContext();
+  }
+}
+
+/**
+ * The glyph, as a white-on-transparent raster the size of the frame. Sized
+ * against the frame's HEIGHT, so an export at any resolution is the same
+ * composition, only with more pixels.
+ */
+function rasterise(w, h, s) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  const lines = (s.text || ' ').split('\n');
+  // The cap is the share of the frame the tallest line's ink should fill; one
+  // line of a lowercase glyph is measured by its own ink, not the em box.
+  let px = Math.round(h * s.size);
+  const font = (p) => `${s.italic ? 'italic ' : ''}${s.weight} ${p}px ${s.font}`;
+  ctx.font = font(px);
+  const m = ctx.measureText(lines.join(''));
+  const ink = (m.actualBoundingBoxAscent + m.actualBoundingBoxDescent) || px * 0.7;
+  const target = (h * s.size) / lines.length;
+  px = Math.max(8, Math.round(px * (target / ink)));
+  ctx.font = font(px);
+  if ('letterSpacing' in ctx) ctx.letterSpacing = `${s.letterSpacing * px}px`;
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  // Centre each line on its own ink box, so a lone "a" sits in the middle of
+  // the frame rather than an em box that is mostly empty ascender.
+  const lead = px * 1.05;
+  const total = lead * (lines.length - 1);
+  lines.forEach((line, i) => {
+    const lm = ctx.measureText(line || ' ');
+    const asc = lm.actualBoundingBoxAscent, desc = lm.actualBoundingBoxDescent;
+    const cy = h / 2 - total / 2 + i * lead;
+    ctx.fillText(line, w / 2, cy + (asc - desc) / 2);
+  });
+  return c;
+}
+
+/*
+ * The Google Fonts catalogue, from Fontsource's public API: every family,
+ * its weights and whether it has italics, with CORS and no key. Google's own
+ * Developer API needs a key, and its metadata endpoint sends no CORS header.
+ * Fetched once, the first time the search is focused.
+ */
+let catalogue = null;
+function loadCatalogue() {
+  if (!catalogue) {
+    catalogue = fetch('https://api.fontsource.org/v1/fonts')
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then((list) => list
+        .filter((f) => f.type === 'google')
+        .map((f) => ({ family: f.family, weights: f.weights || [400], italic: (f.styles || []).includes('italic'), category: f.category || '' }))
+        .sort((a, b) => a.family.localeCompare(b.family)))
+      .catch((err) => { catalogue = null; throw err; });
+  }
+  return catalogue;
+}
+
+/*
+ * Ask Google for the weights the family actually has. The css2 endpoint
+ * answers 400 for the WHOLE request if any weight in it does not exist, so
+ * a fixed 300..800 range silently failed for every single-weight display
+ * face — Archivo Black among the presets.
+ */
+async function loadGoogleFont(family, meta) {
+  const id = 'gf-' + family.replace(/\s+/g, '-');
+  if (!document.getElementById(id)) {
+    if (!meta) {
+      try { meta = (await loadCatalogue()).find((f) => f.family === family); } catch {}
+    }
+    const weights = meta ? meta.weights : [];
+    let axis = '';
+    if (weights.length && meta.italic) {
+      axis = ':ital,wght@' + [0, 1].flatMap((i) => weights.map((w) => `${i},${w}`)).join(';');
+    } else if (weights.length) {
+      axis = ':wght@' + weights.join(';');
+    }
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family).replace(/%20/g, '+')}${axis}&display=swap`;
+    document.head.appendChild(link);
+  }
+  const w = meta && meta.weights.includes(S.weight) ? S.weight : 400;
+  try { await document.fonts.load(`${w} 120px "${family}"`); } catch {}
+}
+async function loadUploadedFont(file) {
+  const base = file.name.replace(/\.[^.]+$/, '').replace(/[^\w\s-]/g, '').trim() || 'Custom Font';
+  const face = new FontFace(base, await file.arrayBuffer());
+  await face.load();
+  document.fonts.add(face);
+  return base;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Preview
+// ─────────────────────────────────────────────────────────────────────────────
+const view = document.getElementById('view');
+const frame = document.getElementById('frame');
+let engine;
+try { engine = new Engine(view); }
+catch (err) {
+  frame.innerHTML = `<div class="gl-error">${err.message}</div>`;
+}
+
+const clock = { t: 0, playing: true, last: performance.now(), fps: 60 };
+let sourceDirty = true;
+function dpr() { return Math.min(window.devicePixelRatio || 1, 2); }
+function syncSize() {
+  if (!engine) return;
+  const r = frame.getBoundingClientRect();
+  const w = Math.max(2, Math.round(r.width * dpr()));
+  const h = Math.max(2, Math.round(r.height * dpr()));
+  if (w !== engine.w || h !== engine.h) { engine.resize(w, h); sourceDirty = true; }
+}
+new ResizeObserver(syncSize).observe(frame);
+
+function cycle() { return S.speed > 0 ? 1 / S.speed : 1; }
+const meta = document.getElementById('meta');
+const progress = document.getElementById('progress');
+function tick(now) {
+  const dt = Math.min(0.1, (now - clock.last) / 1000);
+  clock.last = now;
+  if (engine) {
+    syncSize();
+    if (sourceDirty) { engine.setSource(rasterise(engine.w, engine.h, S)); sourceDirty = false; }
+    if (clock.playing) {
+      clock.t += dt;
+      clock.fps += (1 / Math.max(dt, 1e-3) - clock.fps) * 0.05;
+      engine.step(clock.t, dt, S, dpr());
+    }
+    const phase = (clock.t % cycle()) / cycle();
+    const angle = S.mode === 'spin'
+      ? (phase * 360) % 360
+      : Math.sin(phase * Math.PI * 2) * S.amplitude;
+    meta.innerHTML = `<strong>angle</strong> ${angle.toFixed(0).padStart(3, ' ')}° &nbsp;·&nbsp; <strong>t</strong> ${clock.t.toFixed(2)}s &nbsp;·&nbsp; <strong>fps</strong> ${Math.round(clock.fps)}`;
+    progress.style.width = `${phase * 100}%`;
+  }
+  requestAnimationFrame(tick);
+}
+
+function replay() { clock.t = 0; if (engine) engine.clear(); }
+document.getElementById('replay').onclick = replay;
+const pauseBtn = document.getElementById('pause');
+function togglePause() {
+  clock.playing = !clock.playing;
+  pauseBtn.textContent = clock.playing ? 'Pause' : 'Play';
+}
+pauseBtn.onclick = togglePause;
+window.addEventListener('keydown', (e) => {
+  if (e.code !== 'Space' || e.metaKey || e.ctrlKey) return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  e.preventDefault();
+  togglePause();
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Controls — the same primitives pixelated-text builds in React, as DOM.
+// ─────────────────────────────────────────────────────────────────────────────
+const h = (tag, attrs = {}, ...kids) => {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') el.className = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (v !== undefined && v !== null) el.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null) el.append(k);
+  return el;
+};
+const refreshers = [];
+function set(key, value, { source = false } = {}) {
+  S[key] = value;
+  if (source) sourceDirty = true;
+  writeHash();
+  refreshers.forEach((r) => r());
+}
+
+function section(label, ...fields) {
+  return h('div', { class: 'section' }, h('div', { class: 'section-label' }, label), ...fields);
+}
+function slider(label, key, min, max, step, format, opts = {}) {
+  const val = h('div', { class: 'field-value' });
+  const input = h('input', { type: 'range', min, max, step });
+  input.value = S[key];
+  input.addEventListener('input', () => set(key, parseFloat(input.value), opts));
+  const field = h('div', { class: 'field' },
+    h('div', { class: 'field-row' }, h('div', { class: 'field-name' }, label), val), input);
+  refreshers.push(() => {
+    val.textContent = format(S[key]);
+    if (document.activeElement !== input) input.value = S[key];
+    if (opts.when) field.hidden = !opts.when();
+  });
+  return field;
+}
+function chips(label, key, options, opts = {}) {
+  const row = h('div', { class: 'select-row' });
+  const field = h('div', { class: 'field' },
+    label ? h('div', { class: 'field-row' }, h('div', { class: 'field-name' }, label)) : null, row);
+  const draw = () => {
+    row.replaceChildren(...(typeof options === 'function' ? options() : options).map((o) =>
+      h('button', {
+        class: `select-chip ${S[key] === o.value ? 'active' : ''}`,
+        style: o.style,
+        onclick: () => (opts.onpick ? opts.onpick(o.value) : set(key, o.value, opts)),
+      }, o.label)));
+  };
+  refreshers.push(draw);
+  return field;
+}
+function color(label, key) {
+  const input = h('input', { type: 'color', title: label });
+  input.value = S[key];
+  input.addEventListener('input', () => { S.palette = 'custom'; set(key, input.value); });
+  refreshers.push(() => { if (document.activeElement !== input) input.value = S[key]; });
+  return h('div', { class: 'stop' }, input, h('div', { class: 'stop-name' }, label));
+}
+
+const extraFonts = [];
+let fontNote;
+function fontsSection() {
+  fontNote = h('div', { class: 'field-value' }, '0 loaded');
+  const upload = h('label', { class: 'upload' }, 'Upload .ttf / .otf / .woff / .woff2',
+    h('input', {
+      type: 'file', accept: '.ttf,.otf,.woff,.woff2,font/*', multiple: '',
+      onchange: async (e) => {
+        fontNote.textContent = 'loading…';
+        for (const f of e.target.files) {
+          try {
+            const fam = await loadUploadedFont(f);
+            const value = `"${fam}", sans-serif`;
+            extraFonts.push({ value, label: fam.length > 14 ? fam.slice(0, 12) + '…' : fam });
+            set('font', value, { source: true });
+          } catch { fontNote.textContent = `couldn't load ${f.name}`; return; }
+        }
+        fontNote.textContent = `${extraFonts.length} loaded`;
+      },
+    }));
+  const pick = async (family, meta) => {
+    fontNote.textContent = `loading ${family}…`;
+    await loadGoogleFont(family, meta);
+    const value = `"${family}", sans-serif`;
+    if (!extraFonts.find((f) => f.value === value)) {
+      extraFonts.push({ value, label: family.length > 14 ? family.slice(0, 12) + '…' : family });
+    }
+    fontNote.textContent = `${extraFonts.length} loaded`;
+    set('font', value, { source: true });
+  };
+  const chip = (family, meta, sub) => h('button', {
+    class: 'select-chip',
+    title: family,
+    onclick: () => pick(family, meta),
+  }, `+ ${family}`, sub ? h('span', { class: 'chip-sub' }, sub) : null);
+
+  // Empty query: the presets. Typing: the catalogue, prefix matches first.
+  const results = h('div', { class: 'select-row' });
+  const status = h('div', { class: 'hint' });
+  const showPresets = () => {
+    status.textContent = 'Or add a Google font';
+    results.replaceChildren(...GOOGLE_FONT_PRESETS.map((gf) => chip(gf)));
+  };
+  let seq = 0;
+  const search = async (q) => {
+    const n = ++seq;
+    q = q.trim().toLowerCase();
+    if (!q) return showPresets();
+    status.textContent = 'Searching…';
+    let list;
+    try { list = await loadCatalogue(); }
+    catch { if (n === seq) status.textContent = "Couldn't reach the font list. Try again, or use a preset."; return; }
+    if (n !== seq) return;
+    const starts = [], contains = [];
+    for (const f of list) {
+      const name = f.family.toLowerCase();
+      if (name.startsWith(q)) starts.push(f);
+      else if (name.includes(q)) contains.push(f);
+    }
+    const hits = [...starts, ...contains];
+    status.textContent = hits.length
+      ? `${hits.length} ${hits.length === 1 ? 'family' : 'families'}${hits.length > 12 ? ' · showing 12' : ''}`
+      : 'No Google font by that name';
+    results.replaceChildren(...hits.slice(0, 12).map((f) => chip(f.family, f, f.category.replace('-', ' '))));
+  };
+  const input = h('input', {
+    class: 'font-search',
+    type: 'search',
+    placeholder: 'Search Google Fonts…',
+    'aria-label': 'Search Google Fonts',
+    autocomplete: 'off',
+    spellcheck: 'false',
+  });
+  let timer = 0;
+  input.addEventListener('focus', () => { loadCatalogue().catch(() => {}); }, { once: true });
+  input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => search(input.value), 120); });
+  // Enter takes the top match, which is what a search box promises.
+  input.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const first = results.querySelector('.select-chip');
+    if (first && input.value.trim()) first.click();
+  });
+  showPresets();
+  return h('div', { class: 'field' },
+    h('div', { class: 'field-row' }, h('div', { class: 'field-name' }, 'Custom font'), fontNote),
+    upload, h('div', { class: 'font-search-wrap' }, input), status, results);
+}
+
+function paletteChips() {
+  return chips('Palette', 'palette', Object.entries(PALETTES).map(([k, p]) => ({
+    value: k,
+    label: h('span', { class: 'palette-chip' },
+      h('span', { class: 'palette-ramp', style: `background: linear-gradient(90deg, ${p.background}, ${p.cool}, ${p.warm}, ${p.core})` }),
+      p.label),
+  })), {
+    onpick: (k) => {
+      const p = PALETTES[k];
+      Object.assign(S, { core: p.core, warm: p.warm, cool: p.cool, background: p.background });
+      set('palette', k);
+    },
+  });
+}
+
+const textInput = h('textarea', { class: 'text-input', rows: 2, placeholder: 'Type something…' });
+textInput.value = S.text;
+textInput.addEventListener('input', () => set('text', textInput.value, { source: true }));
+
+document.getElementById('controls').append(
+  section('Content', textInput),
+  section('Typography',
+    chips('Font', 'font', () => [...FONT_OPTIONS, ...extraFonts], { source: true }),
+    fontsSection(),
+    chips('Weight', 'weight', [200, 400, 500, 600, 800].map((v) => ({ value: v, label: String(v) })), { source: true }),
+    chips('Style', 'italic', [{ value: false, label: 'Regular' }, { value: true, label: 'Italic' }], { source: true }),
+    slider('Size', 'size', 0.2, 0.95, 0.01, (v) => `${Math.round(v * 100)}% of frame`, { source: true }),
+    slider('Letter spacing', 'letterSpacing', -0.08, 0.4, 0.005, (v) => `${v.toFixed(3)}em`, { source: true }),
+  ),
+  section('Motion',
+    chips('Mode', 'mode', [{ value: 'swing', label: 'Swing' }, { value: 'spin', label: 'Spin' }]),
+    slider('Speed', 'speed', 0.05, 1.5, 0.01, (v) => `${v.toFixed(2)} cycles/s`),
+    slider('Swing', 'amplitude', 5, 170, 1, (v) => `±${v}°`, { when: () => S.mode === 'swing' }),
+    slider('Perspective', 'perspective', 0, 1.6, 0.01, (v) => v.toFixed(2)),
+  ),
+  section('Steps',
+    slider('Bands', 'bands', 1, 64, 1, (v) => (v === 1 ? '1 (smooth)' : String(v))),
+    slider('Band delay', 'delay', 0, 0.12, 0.001, (v) => `${Math.round(v * 1000)}ms`),
+    chips('Direction', 'direction', [
+      { value: 'down', label: 'Top first' },
+      { value: 'up', label: 'Bottom first' },
+      { value: 'center', label: 'From centre' },
+    ]),
+  ),
+  section('Trail',
+    slider('Length', 'trail', 0.6, 0.985, 0.001, (v) => v.toFixed(3)),
+    slider('Spread', 'spread', 0, 6, 0.1, (v) => `${v.toFixed(1)}px`),
+    slider('Glow', 'glow', 0, 1, 0.01, (v) => v.toFixed(2)),
+    slider('Grain', 'grain', 0, 0.3, 0.005, (v) => v.toFixed(3)),
+  ),
+  section('Color',
+    paletteChips(),
+    h('div', { class: 'field' }, h('div', { class: 'stops' },
+      color('Core', 'core'), color('Warm', 'warm'), color('Cool', 'cool'), color('Ground', 'background'))),
+  ),
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Export
+// ─────────────────────────────────────────────────────────────────────────────
+const RESOLUTIONS = [
+  ['1280x720', '720p  1280 × 720'],
+  ['1920x1080', '1080p  1920 × 1080'],
+  ['2560x1440', '1440p  2560 × 1440'],
+  ['3840x2160', '4K  3840 × 2160'],
+  ['1080x1080', 'Square  1080 × 1080'],
+  ['2160x2160', 'Square 2x  2160 × 2160'],
+  ['1080x1920', 'Vertical  1080 × 1920'],
+];
+function resolutionSelect(initial) {
+  const sel = h('select', { class: 'select-native' },
+    RESOLUTIONS.map(([v, l]) => h('option', { value: v }, l)));
+  sel.value = initial;
+  return sel;
+}
+function row(label, control) {
+  return h('div', { class: 'export-row' },
+    h('div', { class: 'export-label' }, label), h('div', { class: 'export-control' }, control));
+}
+function seg(options, initial, onchange) {
+  let cur = initial;
+  const el = h('div', { class: 'seg' });
+  const draw = () => el.replaceChildren(...options.map(([v, l]) =>
+    h('button', { class: `seg-btn ${cur === v ? 'active' : ''}`, onclick: () => { cur = v; draw(); onchange(v); } }, l)));
+  draw();
+  return el;
+}
+function download(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = h('a', { href: url, download: name });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+/**
+ * An engine on its own canvas at the export size. The scale factor keeps
+ * every px-sized control (spread, glow radius) proportional to the frame, so
+ * a 4K still is the preview with more pixels, not a different picture.
+ */
+function offscreen(w, h) {
+  const c = document.createElement('canvas');
+  // Attached, off screen: some browsers only stream a canvas that is in the
+  // document.
+  c.style.cssText = 'position:fixed;left:-99999px;top:0;width:10px;height:10px';
+  document.body.append(c);
+  const e = new Engine(c);
+  e.resize(w, h);
+  e.setSource(rasterise(w, h, S));
+  const scale = h / Math.max(1, engine ? engine.h / dpr() : h);
+  return { c, e, scale: scale * 1 };
+}
+
+function imagePane() {
+  let format = 'png';
+  const res = resolutionSelect('2160x2160');
+  const btn = h('button', { class: 'big-btn' }, 'Export PNG');
+  btn.onclick = async () => {
+    const [w, hh] = res.value.split('x').map(Number);
+    btn.disabled = true;
+    btn.textContent = 'Rendering…';
+    await new Promise((r) => requestAnimationFrame(() => setTimeout(r)));
+    const { c, e, scale } = offscreen(w, hh);
+    // The trail is history, so a still has to be LIVED into: run the last
+    // second and a half up to the current moment, then read the frame. 30
+    // steps a second is enough — decay is scaled by dt, so the trail is the
+    // same length it is on screen.
+    const steps = 45, dt = 1 / 30;
+    for (let i = steps; i >= 0; i--) e.step(clock.t - i * dt, dt, S, scale);
+    c.toBlob((b) => {
+      download(b, `kinematic-type.${format}`);
+      e.destroy(); c.remove();
+      btn.disabled = false;
+      btn.textContent = `Export ${format.toUpperCase()}`;
+    }, format === 'jpg' ? 'image/jpeg' : 'image/png', 0.95);
+  };
+  return h('div', { class: 'modal-pane', 'data-tab': 'Image' },
+    h('h3', { class: 'modal-title' }, 'Export image'),
+    h('p', { class: 'modal-sub' }, 'The frame on screen right now, re-rendered at the size you pick. Pause first to choose the moment.'),
+    row('Format', seg([['png', 'PNG'], ['jpg', 'JPG']], format, (v) => { format = v; btn.textContent = `Export ${v.toUpperCase()}`; })),
+    row('Resolution', res),
+    btn);
+}
+
+function videoPane() {
+  const res = resolutionSelect('1080x1080');
+  const fps = h('select', { class: 'select-native' }, [24, 30, 60].map((v) => h('option', { value: v }, `${v} fps`)));
+  fps.value = '30';
+  const quality = h('select', { class: 'select-native' },
+    [['2000000', 'Low  ~2 Mbps'], ['5000000', 'Medium  ~5 Mbps'], ['10000000', 'High  ~10 Mbps']].map(([v, l]) => h('option', { value: v }, l)));
+  quality.value = '10000000';
+  const loops = h('select', { class: 'select-native' }, [1, 2, 3, 4].map((v) => h('option', { value: v }, `${v} cycle${v > 1 ? 's' : ''}`)));
+  loops.value = '2';
+  const dur = h('span', { style: 'color: var(--text-dim); font-size: 13px' });
+  const sync = () => { dur.textContent = `${(cycle() * +loops.value).toFixed(1)}s`; };
+  loops.onchange = sync;
+  refreshers.push(sync);
+  const btn = h('button', { class: 'big-btn' }, 'Export WebM');
+  btn.onclick = async () => {
+    const [w, hh] = res.value.split('x').map(Number);
+    const rate = +fps.value;
+    const { c, e, scale } = offscreen(w, hh);
+    // Warm the trail up first, so the file does not open on an empty frame.
+    for (let i = 0; i < 90; i++) e.step(i / 60 - 1.5, 1 / 60, S, scale);
+    const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+    const rec = new MediaRecorder(c.captureStream(rate), { mimeType: mime, videoBitsPerSecond: +quality.value });
+    const chunks = [];
+    rec.ondataavailable = (ev) => { if (ev.data.size) chunks.push(ev.data); };
+    const done = new Promise((r) => { rec.onstop = r; });
+    const total = cycle() * +loops.value;
+    btn.disabled = true;
+    rec.start();
+    // Stepped on a fixed clock, not the wall clock, so a dropped frame makes
+    // the recording stutter rather than the motion skip.
+    let t = 0;
+    const started = performance.now();
+    await new Promise((resolve) => {
+      const frameStep = () => {
+        const wall = (performance.now() - started) / 1000;
+        while (t <= wall && t < total) { e.step(t, 1 / rate, S, scale); t += 1 / rate; }
+        btn.innerHTML = `<span class="recording-pulse"></span> Recording… ${Math.round((t / total) * 100)}%`;
+        if (t < total) requestAnimationFrame(frameStep); else resolve();
+      };
+      requestAnimationFrame(frameStep);
+    });
+    rec.stop();
+    await done;
+    download(new Blob(chunks, { type: mime }), 'kinematic-type.webm');
+    e.destroy(); c.remove();
+    btn.disabled = false;
+    btn.textContent = 'Export WebM';
+  };
+  sync();
+  return h('div', { class: 'modal-pane', 'data-tab': 'Video', hidden: '' },
+    h('h3', { class: 'modal-title' }, 'Export video'),
+    h('p', { class: 'modal-sub' }, 'Records whole cycles in real time through the canvas stream, so the file loops cleanly.'),
+    row('Resolution', res), row('Quality', quality), row('Frame rate', fps), row('Length', loops), row('Duration', dur),
+    btn);
+}
+
+function jsonPane() {
+  const code = h('pre', { class: 'code-block' });
+  refreshers.push(() => { code.textContent = JSON.stringify(S, null, 2); });
+  const input = h('textarea', { class: 'text-input', rows: 4, placeholder: 'Paste settings JSON…', style: 'font-size:12px;font-family:ui-monospace,monospace;margin-top:16px' });
+  const copy = (text, btn, label) => navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = label; }, 1200);
+  });
+  const copyJson = h('button', { class: 'secondary-btn' }, 'Copy JSON');
+  copyJson.onclick = () => copy(JSON.stringify(S, null, 2), copyJson, 'Copy JSON');
+  const copyLink = h('button', { class: 'secondary-btn' }, 'Copy link');
+  copyLink.onclick = () => copy(location.href, copyLink, 'Copy link');
+  const load = h('button', { class: 'secondary-btn' }, 'Load');
+  load.onclick = () => {
+    try {
+      Object.assign(S, DEFAULTS, JSON.parse(input.value));
+      textInput.value = S.text;
+      sourceDirty = true;
+      writeHash();
+      refreshers.forEach((r) => r());
+      input.value = '';
+    } catch { load.textContent = 'Invalid JSON'; setTimeout(() => { load.textContent = 'Load'; }, 1200); }
+  };
+  return h('div', { class: 'modal-pane', 'data-tab': 'JSON', hidden: '' },
+    h('h3', { class: 'modal-title' }, 'Settings'),
+    h('p', { class: 'modal-sub' }, 'The whole composition. It is also the address bar, so the link reopens it exactly.'),
+    code, h('div', { class: 'copy-row' }, copyJson, copyLink), input, h('div', { class: 'copy-row' }, load));
+}
+
+const scrim = document.getElementById('scrim');
+const panes = [imagePane(), videoPane(), jsonPane()];
+document.getElementById('panes').append(...panes);
+const tabs = document.getElementById('tabs');
+function showTab(name) {
+  tabs.querySelectorAll('.modal-tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
+  panes.forEach((p) => { p.hidden = p.dataset.tab !== name; });
+}
+tabs.append(...['Image', 'Video', 'JSON'].map((n) => h('button', { class: 'modal-tab', 'data-tab': n, onclick: () => showTab(n) }, n)));
+showTab('Image');
+document.getElementById('open-export').onclick = () => { scrim.hidden = false; };
+document.getElementById('close-export').onclick = () => { scrim.hidden = true; };
+scrim.addEventListener('click', (e) => { if (e.target === scrim) scrim.hidden = true; });
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape') scrim.hidden = true; });
+
+// Fonts first: rasterising before Inter lands draws the fallback face into the
+// texture, and nothing redraws it.
+(async () => {
+  try {
+    await Promise.all([document.fonts.load('500 200px "Inter"'), document.fonts.ready]);
+  } catch {}
+  refreshers.forEach((r) => r());
+  sourceDirty = true;
+  requestAnimationFrame(tick);
+  // A link can name any Google family now the search exists, not only a
+  // preset. Fetch it after the first frame rather than before: the page
+  // opens at once in Inter and the glyph swaps when the face lands.
+  const fam = S.font.match(/^"([^"]+)"/);
+  if (fam && fam[1] !== 'Inter') {
+    await loadGoogleFont(fam[1]);
+    extraFonts.push({ value: S.font, label: fam[1].length > 14 ? fam[1].slice(0, 12) + '…' : fam[1] });
+    refreshers.forEach((r) => r());
+    sourceDirty = true;
+  }
+})();
+</script>
+</body>
+</html>
