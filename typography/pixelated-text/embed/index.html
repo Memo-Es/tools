@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Pixelated text</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas aria-hidden="true"></canvas>
+<p id="label" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)"></p>
+<script src="../engine.js"></script>
+<script>
+// Plays one piece of pixelated text, filling the frame it is put in.
+// The settings come from the playground's Embed tab as JSON in ?c=, and
+// anything missing or of the wrong type falls back to the playground's default.
+(function () {
+  const defaults = {
+    text: 'Hello World', fontStack: '"Inter", system-ui, sans-serif', weight: 400, italic: false,
+    size: 140, letterSpacing: -0.025, align: 'center', color: '#FAF8F5', background: '#000000',
+    maxCell: 56, minCell: 1, duration: 1.8, easing: 'easeOutCubic', loop: true, hold: 1.8,
+  };
+  let given = {};
+  try { given = JSON.parse(new URLSearchParams(location.search).get('c') || '{}') || {}; } catch {}
+  const s = {};
+  for (const k in defaults) s[k] = typeof given[k] === typeof defaults[k] ? given[k] : defaults[k];
+
+  document.body.style.background = s.background;
+  document.getElementById('label').textContent = s.text;
+  const canvas = document.querySelector('canvas');
+
+  // The first family in the stack is fetched from Google Fonts unless it is a
+  // system or generic one. A font uploaded in the playground has no address,
+  // so it falls back to the rest of the stack.
+  const system = /^(system-ui|ui-[a-z]+|sans-serif|serif|monospace|cursive|fantasy|georgia|arial|helvetica|times new roman|menlo|sfmono-regular)$/i;
+  const family = s.fontStack.split(',')[0].trim().replace(/^["']|["']$/g, '');
+  const fontReady = (async () => {
+    if (!family || system.test(family)) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap`;
+    document.head.appendChild(link);
+    await new Promise((done) => { link.onload = link.onerror = done; });
+    try { await document.fonts.load(`${s.italic ? 'italic ' : ''}${s.weight} ${s.size}px "${family}"`); } catch {}
+  })();
+
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const ease = EASINGS[s.easing] || EASINGS.easeOutCubic;
+  let w = 0, h = 0, start = 0;
+
+  function draw(progress) {
+    renderPixelatedFrame(canvas, {
+      text: s.text || ' ', font: s.fontStack, weight: s.weight, italic: s.italic, size: s.size,
+      color: s.color, letterSpacing: s.letterSpacing, align: s.align,
+      progress, maxCell: s.maxCell, minCell: s.minCell,
+      width: w, height: h, dpr: window.devicePixelRatio || 1,
+    });
+  }
+
+  function frame(now) {
+    const elapsed = (now - start) / 1000;
+    let raw = s.duration > 0 ? elapsed / s.duration : 1;
+    if (raw >= 1) {
+      raw = 1;
+      if (!s.loop) { draw(1); return; }
+      if (elapsed >= s.duration + s.hold) { start = now; raw = 0; }
+    }
+    draw(raw >= 1 ? 1 : ease(raw));
+    requestAnimationFrame(frame);
+  }
+
+  function measure() {
+    w = Math.max(1, innerWidth); h = Math.max(1, innerHeight);
+    clearPixelCache();
+    if (still) draw(1);
+  }
+
+  fontReady.then(() => {
+    measure();
+    addEventListener('resize', measure);
+    if (!still) { start = performance.now(); requestAnimationFrame(frame); }
+  });
+})();
+</script>
+</body>
+</html>
