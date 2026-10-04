@@ -27,7 +27,7 @@
     font-family: "Inter", system-ui, sans-serif;
     min-height: 100vh; overflow-x: hidden;
   }
-  .app { display: grid; grid-template-columns: 1fr 400px; min-height: 100vh; }
+  .app { display: grid; grid-template-columns: 1fr 400px; min-height: calc(100vh - var(--mt-nav-h, 0px)); }
   @media (max-width: 960px) {
     .app { grid-template-columns: 1fr; }
     .panel { border-left: none; border-top: 1px solid var(--panel-border); }
@@ -110,7 +110,7 @@
   .panel {
     background: var(--panel); border-left: 1px solid var(--panel-border);
     padding: 32px 28px 40px 28px;
-    overflow-y: auto; max-height: 100vh; position: sticky; top: 0;
+    overflow-y: auto; max-height: calc(100vh - var(--mt-nav-h, 0px)); position: sticky; top: var(--mt-nav-h, 0px);
   }
   .panel-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
   .panel-brand-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 2px; }
@@ -317,6 +317,7 @@
 <link rel="stylesheet" href="../design-system/dist/index.css" />
 </head>
 <body>
+<nav class="mt-nav" aria-label="Breadcrumb"><a href="/">Tools</a><span aria-hidden="true">/</span><span aria-current="page">Line scale</span></nav>
 <div id="root"></div>
 
 <script type="text/babel">
@@ -1079,7 +1080,7 @@ function App() {
       <aside className="panel">
         <div className="panel-brand">
           <div className="panel-brand-dot" />
-          <div className="panel-brand-name"><a href="/">Tools</a> / Line scale</div>
+          <div className="panel-brand-name">Line Scale · Playground</div>
         </div>
         <h2 className="panel-title">Line scale</h2>
         <p className="panel-sub">

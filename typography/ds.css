@@ -34,7 +34,7 @@ html, body {
 .app {
   display: grid;
   grid-template-columns: 1fr 380px;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--mt-nav-h, 0px));
   gap: 0;
 }
 @media (max-width: 960px) {
@@ -145,9 +145,9 @@ html, body {
   border-left: 1px solid var(--panel-border);
   padding: 32px 28px 40px 28px;
   overflow-y: auto;
-  max-height: 100vh;
+  max-height: calc(100vh - var(--mt-nav-h, 0px));
   position: sticky;
-  top: 0;
+  top: var(--mt-nav-h, 0px);
 }
 .panel-brand {
   display: flex;

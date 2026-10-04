@@ -16,6 +16,25 @@
 }
 .mt-dots { flex: 1; height: 1px; margin: 0 var(--space-8); border-bottom: 2px dotted var(--rule); }
 
+/* Nav: the strip above a tool, with the way back to the list and the tool's name.
+   > TOOLS / POINT CLOUD
+   A page that has one gets --mt-nav-h, so a layout that fills the screen can
+   take it off its height: calc(100vh - var(--mt-nav-h, 0px)). */
+.mt-nav {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; gap: var(--space-8);
+  box-sizing: border-box; height: 32px; padding: 0 var(--space-24);
+  background: var(--bg); border-bottom: 1px solid var(--line);
+  font: 11px/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0;
+  color: var(--dim); white-space: nowrap; overflow: hidden;
+}
+.mt-nav::before { content: '>'; }
+.mt-nav a { color: var(--dim); text-decoration: none; }
+.mt-nav a:hover, .mt-nav a:focus-visible { color: var(--hi); }
+.mt-nav a:focus-visible { outline: 1px solid var(--text); outline-offset: 2px; }
+.mt-nav [aria-current] { color: var(--hi); }
+:root:has(> body > .mt-nav) { --mt-nav-h: 32px; }
+
 /* Bracket buttons: the label is the button, [LIKE_THIS] */
 .mt-btn { background: none; border: 0; border-radius: var(--radius-0); padding: var(--space-2) var(--space-4); cursor: pointer; color: var(--dim); }
 .mt-btn:hover, .mt-btn.is-on { color: var(--hi); }
@@ -351,8 +370,3 @@ input[type='date'].mt-input { color-scheme: dark; }
 .mt-play .scheme-select { font: 12px/1.6 var(--font-mono); text-transform: uppercase; color: var(--hi); }
 .mt-play .topbar { background: var(--panel); border-bottom: 1px solid var(--line); }
 .mt-play .toast { background: var(--hi); color: var(--bg); }
-
-/* The breadcrumb back to the list of tools, in the panel label: > TOOLS / POINT CLOUD */
-.mt-play .panel-brand-name a { color: var(--text); text-decoration: none; }
-.mt-play .panel-brand-name a:hover,
-.mt-play .panel-brand-name a:focus-visible { color: var(--hi); text-decoration: underline; text-underline-offset: 2px; }

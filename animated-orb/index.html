@@ -22,7 +22,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: "Inter", system-ui, sans-serif; height: 100vh; overflow: hidden; }
 
-.app { display: grid; grid-template-columns: 1fr 380px; height: 100vh; }
+.app { display: grid; grid-template-columns: 1fr 380px; height: calc(100vh - var(--mt-nav-h, 0px)); }
 @media (max-width: 900px) {
   .app { grid-template-columns: 1fr; height: auto; overflow-y: auto; }
   .panel { border-left: none !important; border-top: 1px solid var(--panel-border); max-height: none !important; }
@@ -55,7 +55,7 @@ html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); f
 .btn.primary:hover { background: #fff; color: var(--bg); }
 
 /* Panel */
-.panel { background: var(--panel); border-left: 1px solid var(--panel-border); padding: 28px 24px 36px; overflow-y: auto; max-height: 100vh; position: sticky; top: 0; }
+.panel { background: var(--panel); border-left: 1px solid var(--panel-border); padding: 28px 24px 36px; overflow-y: auto; max-height: calc(100vh - var(--mt-nav-h, 0px)); position: sticky; top: var(--mt-nav-h, 0px); }
 .panel::-webkit-scrollbar { width: 3px; }
 .panel::-webkit-scrollbar-track { background: transparent; }
 .panel::-webkit-scrollbar-thumb { background: #252525; border-radius: 2px; }
@@ -98,6 +98,7 @@ input[type=range]::-moz-range-thumb { width: 12px; height: 12px; background: var
 <link rel="stylesheet" href="../design-system/dist/index.css" />
 </head>
 <body>
+<nav class="mt-nav" aria-label="Breadcrumb"><a href="/">Tools</a><span aria-hidden="true">/</span><span aria-current="page">Animated orb</span></nav>
 
 <!-- SVG filter — no CDN, fully inline -->
 <svg width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">
@@ -148,7 +149,7 @@ input[type=range]::-moz-range-thumb { width: 12px; height: 12px; background: var
   <aside class="panel" id="panel">
     <div class="panel-brand">
       <div class="panel-brand-dot"></div>
-      <div class="panel-brand-name"><a href="/">Tools</a> / Animated orb</div>
+      <div class="panel-brand-name">Memo-Es · Playground</div>
     </div>
     <h2 class="panel-title">Animated Orb</h2>
     <p class="panel-sub">Soft glowing blobs fused by a classic goo filter. Adjust colors, motion, and atmosphere — then export a standalone HTML file.</p>

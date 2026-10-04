@@ -18,6 +18,25 @@
 }
 .mt-dots { flex: 1; height: 1px; margin: 0 var(--mt-space-8); border-bottom: 2px dotted var(--mt-rule); }
 
+/* Nav: the strip above a tool, with the way back to the list and the tool's name.
+   > TOOLS / POINT CLOUD
+   A page that has one gets --mt-nav-h, so a layout that fills the screen can
+   take it off its height: calc(100vh - var(--mt-mt-nav-h, 0px)). */
+.mt-nav {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; gap: var(--mt-space-8);
+  box-sizing: border-box; height: 32px; padding: 0 var(--mt-space-24);
+  background: var(--mt-bg); border-bottom: 1px solid var(--mt-line);
+  font: 11px/1 var(--mt-font-mono); text-transform: uppercase; letter-spacing: 0;
+  color: var(--mt-dim); white-space: nowrap; overflow: hidden;
+}
+.mt-nav::before { content: '>'; }
+.mt-nav a { color: var(--mt-dim); text-decoration: none; }
+.mt-nav a:hover, .mt-nav a:focus-visible { color: var(--mt-hi); }
+.mt-nav a:focus-visible { outline: 1px solid var(--mt-text); outline-offset: 2px; }
+.mt-nav [aria-current] { color: var(--mt-hi); }
+:root:has(> body > .mt-nav) { --mt-nav-h: 32px; }
+
 /* Bracket buttons: the label is the button, [LIKE_THIS] */
 .mt-btn { background: none; border: 0; border-radius: var(--mt-radius-0); padding: var(--mt-space-2) var(--mt-space-4); cursor: pointer; color: var(--mt-dim); }
 .mt-btn:hover, .mt-btn.is-on { color: var(--mt-hi); }
@@ -353,8 +372,3 @@ input[type='date'].mt-input { color-scheme: dark; }
 .mt-play .scheme-select { font: 12px/1.6 var(--mt-font-mono); text-transform: uppercase; color: var(--mt-hi); }
 .mt-play .topbar { background: var(--mt-panel); border-bottom: 1px solid var(--mt-line); }
 .mt-play .toast { background: var(--mt-hi); color: var(--mt-bg); }
-
-/* The breadcrumb back to the list of tools, in the panel label: > TOOLS / POINT CLOUD */
-.mt-play .panel-brand-name a { color: var(--mt-text); text-decoration: none; }
-.mt-play .panel-brand-name a:hover,
-.mt-play .panel-brand-name a:focus-visible { color: var(--mt-hi); text-decoration: underline; text-underline-offset: 2px; }
