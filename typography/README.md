@@ -1,43 +1,26 @@
-# Typography Effects
+# Typography
 
-Browser playgrounds for typographic motion. Type anything, tune every
-parameter live, and export a still, a video or the settings.
+Two playgrounds for type in motion, [pixelated text](pixelated-text/) and [kinematic type](kinematic/), and the page that lists them.
 
-Live at https://tools.memoesparza.com/typography/
+Live at [tools.memoesparza.com/typography](https://tools.memoesparza.com/typography/).
 
-| Effect | | |
+| | | |
 | --- | --- | --- |
-| [Pixelated text](pixelated-text/) | Text that materialises through a shrinking block grid | [open](https://tools.memoesparza.com/typography/pixelated-text/) |
-| [Kinematic type](kinematic/) | A glyph swinging on its axis in stepped bands, with a heat trail | [open](https://tools.memoesparza.com/typography/kinematic/) |
+| [Pixelated text](pixelated-text/) | text that comes in through a grid of shrinking blocks | [open](https://tools.memoesparza.com/typography/pixelated-text/) |
+| [Kinematic type](kinematic/) | a glyph turning in stepped bands, with a heat trail | [open](https://tools.memoesparza.com/typography/kinematic/) |
 
-## Structure
+## Usage
 
-- `index.html`: the landing page, one tile per effect
-- `ds.css`: the shared design system: tokens, panel, sliders, chips and the
-  export modal. Every playground links it and keeps only its own rules inline,
-  so a fix here lands in all of them.
-- `<effect>/index.html`: one self-contained playground per folder
-- `assets/`: the landing page's stills
+Open any `index.html` in a browser, there is no build step and nothing to install.
 
-## Adding an effect
+## How it works
 
-1. Make a folder with an `index.html` that links `../ds.css`.
-2. Build the panel from the same classes (`.panel`, `.section`, `.field`,
-   `.select-chip` and the rest) so it reads as one of the set.
-3. Add a tile to `index.html` and a row to the table above.
+- `index.html` is the list, one tile per effect, with its stills in `assets/`.
+- `ds.css` has the panel, the sliders, the chips and the export window that both playgrounds use, and each playground keeps only its own rules inline. On the site the design system in [`../design-system`](../design-system) is linked after it and restyles the same classes.
+- Each effect is one folder with its own `index.html`.
 
-No build step and no dependencies to install. Open any `index.html` in a
-browser.
+To add one, make a folder whose `index.html` links `../ds.css` and builds its panel from the same classes (`.panel`, `.section`, `.field`, `.select-chip` and the rest), then add a tile to `index.html` and a row to the table above.
 
 ## History
 
-`pixelated-text` was its own repository and moved here with its history.
-That repository has been deleted, so its old address,
-memo-es.github.io/pixelated-text, no longer resolves. Typography effects has
-since moved into the tools repo too, and the playground lives at
-tools.memoesparza.com/typography/pixelated-text/.
-
----
-
-Ideated by [Memo Es](https://memoesparza.com) · Implemented with
-[Claude Code](https://claude.ai/code) help
+Pixelated text started as its own repository and came here with its history, and this folder later moved into the tools repo the same way. The old address, memo-es.github.io/pixelated-text, no longer works.

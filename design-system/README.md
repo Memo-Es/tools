@@ -8,10 +8,10 @@ I made it from [invoices](../invoices/) so the next tool can look like that one 
 
 ## Usage
 
-Every tool in this repo can link it from the site, since the build puts it at `/design-system/`:
+Every tool in this repo can link it from the site, since the build puts it at `/design-system/dist/`:
 
 ```html
-<link rel="stylesheet" href="/design-system/index.css">
+<link rel="stylesheet" href="/design-system/dist/index.css">
 ```
 
 A tool with a build step can import it instead, through npm workspaces, the way invoices does:
@@ -42,7 +42,7 @@ Then put `mt-root` on the element that holds the tool and use the classes:
 ## What's in it
 
 - `dist/tokens.css` has the colours, spacing, the shadow and the font stacks as variables, all starting with `--mt-` so they don't clash with a project's own (`--mt-bg`, `--mt-text`, `--mt-dim`, `--mt-hi`, `--mt-paper`, `--mt-ink`, `--mt-space-16`, `--mt-font-mono`). It also has a class for each text style, like `.mt-t-body` or `.mt-t-gr-num`.
-- `dist/components.css` has the pieces of the invoices editor as classes, plus the playground layer described below: the top bar (`mt-bar`), bracket buttons (`mt-btn`, with `is-on`, `mt-btn--primary` and `mt-btn--add`), switches, section heads, fields, chip rows, item rows, the fold, the status line and the A4 sheet (`mt-sheet`).
+- `dist/components.css` has the pieces of the invoices editor as classes, plus the playground layer described below: the strip above every tool that leads back to the list (`mt-nav`), the top bar (`mt-bar`), bracket buttons (`mt-btn`, with `is-on`, `mt-btn--primary` and `mt-btn--add`), switches, section heads, fields, chip rows, item rows, the fold, the status line and the A4 sheet (`mt-sheet`).
 - `dist/fonts.css` loads the five font families from Google Fonts.
 - `dist/index.css` imports the other three.
 
@@ -57,11 +57,21 @@ The tools in this repo were all built on the same control panel classes, which c
 
 It points the tools' own variables (`--bg`, `--panel`, `--text`, `--text-dim`, `--accent`) at the system's colours, turns chips, segments and tabs into bracket buttons, section labels into `~ $` heads, field names into dim labels, sliders into a hairline with a square handle, and squares every corner. Canvases, SVG and WebGL are left alone.
 
+## The nav
+
+Every tool on the site starts with the same strip, `> TOOLS / POINT CLOUD`, which leads back to the list:
+
+```html
+<nav class="mt-nav" aria-label="Breadcrumb"><a href="/">Tools</a><span aria-hidden="true">/</span><span aria-current="page">Point cloud</span></nav>
+```
+
+It goes first in `<body>` and is 32px tall. A page that has one gets `--mt-nav-h` on `:root`, so a tool that fills the screen takes it off its height with `calc(100vh - var(--mt-nav-h, 0px))`, and without the nav that comes out as nothing.
+
 ## How it works
 
 `src/tokens.json` is the same file the Memo Terminal design system page edits on claude.ai, and `src/components.css` is the same stylesheet, so a change made on that page gets copied into `src/` and `npm run build` writes `dist/` from it. The build script has no dependencies.
 
-CI runs `npm run check`, which fails when `dist/` doesn't match `src/`, so an edit to `src/` that was never built can't go unnoticed.
+The site's build runs `npm run check` before anything else, and it fails when `dist/` doesn't match `src/`, so an edit to `src/` that was never built stops the deploy instead of going out unnoticed.
 
 ## Limits
 

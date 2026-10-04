@@ -30,6 +30,7 @@ That builds the whole site into `dist/` the way it is deployed. To work on one t
 ## How it works
 
 - `scripts/build.mjs` builds invoices with Vite, copies the other tools as they are, puts the design system's stylesheet at `/design-system/dist/`, and adds the list of tools from `hub/` as the home page.
+- Every tool starts with the design system's `mt-nav` strip, `> TOOLS / POINT CLOUD`, which links back to the list. Invoices has it in its own top bar instead.
 - Every playground links `design-system/dist/index.css` last in its `<head>` and has `class="mt-play"` on `<html>`. That switches on the playground layer in the design system, which restyles the control panel all the playgrounds share (`.panel`, `.section`, `.field`, `.select-chip`, `.btn` and the rest) without touching their markup or their artwork.
 - npm workspaces link `design-system/` into invoices, so invoices always uses the design system in this repo rather than a published copy.
 - `vercel.json` tells Vercel to run that build and serve `dist/`, with trailing slashes on so each tool's relative paths resolve. It also sets no framework, because Vercel otherwise sees Vite in `invoices/` and builds that folder alone. The project's Root Directory must stay empty for the same reason.
@@ -39,5 +40,5 @@ That builds the whole site into `dist/` the way it is deployed. To work on one t
 
 - travel-planner and rfc-api are not in here. The planner is a Next.js app with a database and sign in, which needs its own deploy, and rfc-api is an API with no interface.
 - The text boxes where you type the words a tool animates keep the tool's own typeface and size, since they preview the type.
-- Point cloud loads three.js from jsDelivr and pixelated text loads React and Babel from unpkg, so those two need those CDNs to be reachable.
+- Point cloud loads three.js from jsDelivr, and pixelated text and line scale load React and Babel from unpkg, so those three need those CDNs to be reachable.
 - `typography/pixelated-text/project/fonts/` has PP Editorial New font files that were already in the public typography repo. Check that their licence allows that before relying on it.

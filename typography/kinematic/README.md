@@ -1,51 +1,25 @@
-# Kinematic Type Playground
+# Kinematic type
 
-Type a glyph and watch it swing on its own axis, cut into horizontal bands
-that each run a little behind the one above, so the motion breaks into steps,
-with a heat trail that fades through a four-stop palette. A browser-based
-experiment with live controls for every parameter and export support.
+A glyph turning on its own axis, cut into horizontal bands that each run a little behind the one above, so the motion breaks into steps and leaves a heat trail that fades through four colours. The effect is after [oyeabhijit](https://www.instagram.com/oyeabhijit/)'s "[a] — Typeface".
 
-## Features
+![A cream lowercase a turned slightly on its axis, edged in orange and violet where it has just been](../assets/kinematic.webp)
 
-- A glyph swinging or spinning in 3D, with perspective
-- Slit-scan bands: the number of steps, how far each lags and where they start
-  (set Bands to 1 for a smooth motion smear)
-- A decaying heat trail with spread, glow and grain
-- Palette presets (Heatwave, Acid, Ice, Ember, Paper) or four custom stops
-- Any font: the built-ins, Google fonts or an uploaded .ttf / .otf / .woff
-- Export to PNG or JPG at up to 4K, to WebM in whole cycles, and to JSON
-- The composition is the URL, so a link reopens it exactly
-- No dependencies: plain HTML, CSS and WebGL2
+Live at [tools.memoesparza.com/typography/kinematic](https://tools.memoesparza.com/typography/kinematic/).
 
 ## Usage
 
-Open the live playground at https://tools.memoesparza.com/typography/kinematic/,
-or open `index.html` in any modern browser. There's no build step. Press
-**Space** to pause and pick the moment for a still.
+Open `index.html` in a browser, there is no build step and nothing loads from a CDN except Google fonts.
+
+You can set how many bands there are, how far each lags and where they start (one band gives a smooth smear instead of steps), the swing or spin and its perspective, the trail's spread, glow and grain, and the palette, from five presets or four stops of your own. The font can be one of the built in ones, a Google font or a file you upload.
+
+Press **Space** to pause and pick the frame for a still. **Export** saves a PNG or JPG at up to 4K, a WebM of whole cycles, or the settings as JSON. The whole composition is kept in the page's address, so copying the link keeps it.
 
 ## How it works
 
-Three shader passes on the GPU:
+Three shader passes in WebGL2:
 
-1. **Glyph.** The text is rasterised once into a texture. Each pixel finds its
-   band, runs the clock back by that band's delay, and inverts a Y-axis
-   rotation with perspective to find where on the glyph it lands.
-2. **Trail.** A feedback buffer keeps the brighter of this frame's glyph and a
-   blurred, decayed copy of the last frame.
-3. **Ramp.** The trail value is mapped through the palette (core, warm, cool,
-   then the ground), with a glow and film grain on top.
+1. The text is drawn once into a texture. Each pixel works out which band it's in, winds the clock back by that band's delay, and undoes a rotation around the vertical axis, with perspective, to find where on the glyph it lands.
+2. A feedback buffer keeps whichever is brighter, this frame's glyph or a blurred, faded copy of the last frame, which is the trail.
+3. The trail's value goes through the palette (core, warm, cool, then the ground), with a glow and film grain on top.
 
-The colour fringe isn't a channel offset. It's time mapped to hue: where the
-glyph is now is the core colour, and the further back it was, the cooler.
-
-## Design system
-
-The shared `../ds.css`, the same one [pixelated-text](../pixelated-text/)
-uses, so the playgrounds read as one set of tools. Only this page's own rules
-are inline.
-
----
-
-Effect after [oyeabhijit](https://www.instagram.com/oyeabhijit/)'s
-"[a] — Typeface". Ideated by [Memo Es](https://memoesparza.com) ·
-Implemented with [Claude Code](https://claude.ai/code) help
+The colour fringe is time rather than a channel offset. Where the glyph is now is the core colour, and the longer ago it was somewhere, the cooler that spot gets.

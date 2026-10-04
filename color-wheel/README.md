@@ -1,56 +1,28 @@
-# Color Wheel Playground
+# Color wheel
 
-An interactive color-harmony tool. Pick a base color, drag handles around the
-wheel to explore harmonies, generate scales, and export your palette.
+A colour wheel for building palettes. You pick a base colour, choose a harmony and drag its handles around the wheel, and every colour gets a name, a Tailwind style 50 to 950 scale and a contrast check, and the palette exports as code or as a board.
 
-**Live:** https://tools.memoesparza.com/color-wheel/
+![The color wheel with a pentadic palette of yellow, emerald, sky, purple and red](docs/screenshot.jpg)
 
-## Features
-
-- Interactive HSV color wheel with draggable harmony handles
-- Harmony schemes: Analogous, Complementary, Split & Double Split
-  Complementary, Triadic, Rectangle, Tetradic, Square, **Pentadic**
-  (5 evenly-spaced mains — ideal for brand systems)
-- **Real color names** fetched from the open-source [color-name-list](https://api.color.pizza)
-  (api.color.pizza), using the **ntc / Name That Color** list — the same clean,
-  conventional names uicolors.app shows; unique per palette, falls back to an
-  offline hue-based name if the network is unavailable. Every name is editable (click to rename).
-  Names come from the picked color (the swatch you see); editable per swatch
-- **Soft / Vivid variants** auto-derived per color (pale tint + saturated punch)
-- **Color-wheel export** — download the wheel itself (HSV disc + shade
-  ring + your palette handles) as **SVG or PNG** (transparent background)
-- **Brand-board export** — a named mosaic board in a brand-sheet layout,
-  downloadable as PNG or SVG
-- **Tailwind 50–950 scales** generated locally in **OKLCH**, with lightness
-  and chroma curves averaged from real Tailwind palettes — so a bright color
-  anchors at 400 (not 500) like uicolors, mids stay vivid, darks deepen, and
-  out-of-gamut chroma is mapped down rather than clipped. Visual preview +
-  full `theme.extend.colors` export. No API key, no network
-- **Per-color detail view** (click a swatch's ⤢ button): a large 50–950 ramp
-  with a **selectable anchor stop** (click any stop to place the source color
-  there and rebuild the ramp), a **WCAG contrast matrix** (per-shade text
-  legibility + a full background×text grid with AA/AA-Large markers), and a
-  **color-info** panel (HEX/RGB/HSL/HSV/OKLCH, relative luminance, on-white/black)
-- Optional **5th color on Tetradic** for 5-stop gradient palettes — drops a
-  draggable handle into the largest hue gap (smoothest sweep), with a live
-  gradient preview you can copy as a CSS `linear-gradient`
-- Live readouts in Hex, RGB, HSL, HSV, and OKLCH
-- Scale generator: Tailwind steps, Shades, Tints, Tones, and harmony scales
-- Color picker popover (saturation/value square + hue slider) and eyedropper
-- Random palette, click-to-copy swatches
-- Export to CSS, SCSS, JSON, Tailwind config, SVG, hex array, or brand board
-  (names and variants are carried into every code export)
-- No dependencies, no build step — pure HTML/CSS/JS
+Live at [tools.memoesparza.com/color-wheel](https://tools.memoesparza.com/color-wheel/).
 
 ## Usage
 
-Open the live playground above, or open `index.html` directly in any modern
-browser. The eyedropper requires a Chromium-based browser (Chrome/Edge).
+Open `index.html` in a browser, there is no build step.
 
-## Project structure
+- The top bar shows the current colour in Hex, RGB, HSL and OKLCH, with a picker and, in Chrome and Edge, an eyedropper.
+- The harmonies are analogous, complementary, split and double split complementary, triadic, rectangle, tetradic, square and pentadic. Tetradic can take a fifth colour, which goes into the widest gap in hue, for a five stop gradient you can copy as a CSS `linear-gradient`.
+- Each swatch has a name you can click to rename, a soft and a vivid variant, and a detail view with its full scale, a WCAG contrast grid and its values in every format. Clicking a stop in that scale moves the base colour to that stop and rebuilds the ramp around it.
+- **Random palette** starts over from a random base.
+- Export writes CSS, SCSS, JSON, a Tailwind config, an SVG, a hex array or a brand board, and the wheel itself as SVG or PNG on a transparent background. Names and variants go into every code export.
 
-- `index.html` — self-contained app
+## How it works
 
----
+The names come from the Name That Color list through [api.color.pizza](https://api.color.pizza), the same list uicolors.app uses, and each name is used once per palette. Without a connection it falls back to a name made from the hue.
 
-Ideated by [Memo Es](https://memoesparza.com) · Built with [Claude Code](https://claude.com/claude-code) help
+The scales are worked out in OKLCH, on lightness and chroma curves averaged from Tailwind's own palettes, so a bright colour lands on 400 rather than 500, the middle stays saturated and the dark end gets deeper. A colour that falls outside sRGB has its chroma brought down until it fits rather than being clipped. None of this needs a key or a network.
+
+## Limits
+
+- The eyedropper only exists in Chromium browsers.
+- Names need api.color.pizza to be reachable, and the fallback names are much plainer.
