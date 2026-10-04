@@ -17,5 +17,5 @@
     "build": "node scripts/build.mjs",
     "check": "node scripts/build.mjs --check"
   },
-  "repository": { "type": "git", "url": "git+https://github.com/Memo-Es/tools-design-system.git" }
+  "repository": { "type": "git", "url": "git+https://github.com/Memo-Es/tools.git", "directory": "design-system" }
 }

@@ -4,7 +4,7 @@ The design system for my tools, which I call Memo Terminal. The screen is black 
 
 ## Why
 
-I made it from [invoices](https://github.com/Memo-Es/invoices) so the next tool can look like that one without copying its stylesheet by hand, and so I can change a colour in one place and have every tool follow.
+I made it from [invoices](../invoices/) so the next tool can look like that one without copying its stylesheet by hand, and so I can change a colour in one place and have every tool follow.
 
 ## Usage
 

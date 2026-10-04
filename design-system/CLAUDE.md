@@ -13,7 +13,7 @@ git config user.email "hola@memoesparza.com"
 
 READMEs, commit messages, pull request descriptions, issues and comments go out under Memo's name, so they follow his voice (`.claude/skills/write-as-memo` in memo-es/memoesparza):
 
-- Before writing or rewriting a README, read the READMEs of several similar public repos for structure, then write it the way his own READMEs are written: a plain first-person opening line, then Why, Usage, How it works and Limits (see memo-es/invoices).
+- Before writing or rewriting a README, read the READMEs of several similar public repos for structure, then write it the way his own READMEs are written: a plain first-person opening line, then Why, Usage, How it works and Limits (see `invoices/README.md` in this repo).
 - Lead with the concrete thing. Connect clauses with "and", "which", "because", "so".
 - No em dashes, and no hyphens in compound adjectives ("dark only", not "dark-only"). Code identifiers are exempt.
 - No aphorisms or taglines, no "not X, but Y", no stacked short sentences for rhythm, no colon followed by a reveal, no sales bullets.
